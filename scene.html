@@ -1,0 +1,361 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spirit Strikers — observatory (real models)</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#02030a;font-family:'Playfair Display',Georgia,serif}
+#gl{position:fixed;inset:0;display:block}
+#scope{position:fixed;inset:0;pointer-events:none;z-index:2;transform-origin:50% 47%;will-change:opacity,transform}
+#scope svg{width:100%;height:100%;display:block}
+.hudtxt{font-family:'Playfair Display',Georgia,serif}
+.logo{position:fixed;left:50%;top:10%;transform:translateX(-50%);text-align:center;color:#f0dca0;z-index:3;pointer-events:none;
+  text-shadow:0 0 22px rgba(202,168,106,.7),0 2px 4px #000;transition:opacity .5s}
+.logo h1{margin:0;font-size:clamp(26px,5.4vw,60px);font-weight:800;letter-spacing:3px}
+.logo img.mark{width:min(56vw,520px);height:auto;display:block;margin:0 auto;
+  filter:drop-shadow(0 0 14px rgba(243,230,132,.55)) drop-shadow(0 2px 6px rgba(0,0,0,.8));
+  animation:markglow 4s ease-in-out infinite}
+@keyframes markglow{0%,100%{filter:drop-shadow(0 0 10px rgba(243,230,132,.4)) drop-shadow(0 2px 6px rgba(0,0,0,.8))}
+  50%{filter:drop-shadow(0 0 22px rgba(243,230,132,.8)) drop-shadow(0 2px 6px rgba(0,0,0,.8))}}
+.logo .sub{font-size:12px;letter-spacing:.5em;text-transform:uppercase;color:#9fb6d8;opacity:.85;margin-top:6px}
+.hud{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:14px 20px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.hud .lbl{color:#caa86a;font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+#prog{width:min(620px,88vw);accent-color:#caa86a}
+.hint{position:fixed;left:50%;bottom:60px;transform:translateX(-50%);z-index:3;color:#a9926a;font-size:13px;letter-spacing:.08em;transition:opacity .5s}
+.side{position:fixed;right:16px;top:50%;transform:translateY(-50%);z-index:5;display:flex;flex-direction:column;gap:10px}
+.side button{font-family:'Playfair Display',Georgia,serif;background:rgba(8,7,15,.72);color:#caa86a;border:1px solid #6a4f2c;
+  border-radius:8px;padding:9px 12px;font-size:12px;letter-spacing:.12em;cursor:pointer;backdrop-filter:blur(3px);white-space:nowrap}
+.side button.on{color:#7CF5C8;border-color:#3f7d6a;box-shadow:0 0 12px rgba(124,245,200,.25)}
+#load{position:fixed;left:16px;bottom:14px;z-index:6;color:#6f7f8c;font-size:11px;letter-spacing:.1em;font-family:monospace}
+</style></head>
+<body>
+<canvas id="gl"></canvas>
+
+<!-- ===== SIGNALSCOPE overlay (verbatim — Blu approved this view) ===== -->
+<div id="scope"><svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="cu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9c082"/><stop offset=".18" stop-color="#c9863f"/>
+      <stop offset=".5" stop-color="#7d4a22"/><stop offset=".82" stop-color="#b9772f"/><stop offset="1" stop-color="#5a3414"/>
+    </linearGradient>
+    <radialGradient id="lensv" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#03040c" stop-opacity=".72"/>
+    </radialGradient>
+    <mask id="lens">
+      <rect x="0" y="0" width="1600" height="900" fill="#fff"/>
+      <circle cx="800" cy="450" r="452" fill="#000"/>
+    </mask>
+  </defs>
+  <rect x="0" y="0" width="1600" height="900" fill="#03020a" fill-opacity="0.985" mask="url(#lens)"/>
+  <circle cx="800" cy="450" r="452" fill="url(#lensv)"/>
+  <g fill="none">
+    <circle cx="800" cy="450" r="461" stroke="url(#cu)" stroke-width="22"/>
+    <circle cx="800" cy="450" r="446" stroke="#f0dca0" stroke-width="2.5" stroke-opacity=".55"/>
+    <circle cx="800" cy="450" r="436" stroke="#5a3414" stroke-width="3" stroke-opacity=".5"/>
+  </g>
+  <g stroke="#cdeaf0" stroke-opacity=".34" fill="none">
+    <line x1="800" y1="250" x2="800" y2="650" stroke-width="1.4"/>
+    <line x1="560" y1="450" x2="1040" y2="450" stroke-width="1.4"/>
+    <circle cx="800" cy="450" r="78" stroke="#e9d29a" stroke-opacity=".5" stroke-width="1.4"/>
+    <circle cx="800" cy="450" r="11" stroke="#e9d29a" stroke-opacity=".7" stroke-width="1.4"/>
+  </g>
+  <g stroke="#e9d29a" stroke-opacity=".5" stroke-width="2">
+    <line x1="800" y1="358" x2="800" y2="376"/><line x1="800" y1="524" x2="800" y2="542"/>
+    <line x1="708" y1="450" x2="726" y2="450"/><line x1="874" y1="450" x2="892" y2="450"/>
+  </g>
+  <g class="hudtxt">
+    <circle cx="150" cy="150" r="52" fill="#06070f" fill-opacity=".55" stroke="url(#cu)" stroke-width="4"/>
+    <circle cx="150" cy="150" r="34" fill="none" stroke="#3f5a4f" stroke-width="1"/>
+    <circle cx="150" cy="150" r="17" fill="none" stroke="#3f5a4f" stroke-width="1"/>
+    <line id="radar" x1="150" y1="150" x2="150" y2="100" stroke="#7CF5C8" stroke-width="2.5" stroke-opacity=".9"/>
+    <text x="150" y="224" fill="#7fae9c" font-size="14" letter-spacing="3" text-anchor="middle">ANTENNA</text>
+  </g>
+  <g class="hudtxt" text-anchor="middle">
+    <rect x="560" y="812" width="480" height="58" rx="10" fill="#06070f" fill-opacity=".6" stroke="url(#cu)" stroke-width="3"/>
+    <g stroke="#6f5a33" stroke-width="1.5">
+      <line x1="600" y1="848" x2="600" y2="862"/><line x1="640" y1="844" x2="640" y2="862"/>
+      <line x1="680" y1="848" x2="680" y2="862"/><line x1="720" y1="844" x2="720" y2="862"/>
+      <line x1="760" y1="848" x2="760" y2="862"/><line x1="800" y1="840" x2="800" y2="862"/>
+      <line x1="840" y1="848" x2="840" y2="862"/><line x1="880" y1="844" x2="880" y2="862"/>
+      <line x1="920" y1="848" x2="920" y2="862"/><line x1="960" y1="844" x2="960" y2="862"/>
+      <line x1="1000" y1="848" x2="1000" y2="862"/>
+    </g>
+    <polygon id="needle" points="800,830 793,840 807,840" fill="#7CF5C8"/>
+    <text x="800" y="838" fill="#e9d29a" font-size="17" letter-spacing="2"><tspan id="freq">88.7</tspan> MHz</text>
+  </g>
+  <text class="hudtxt" x="800" y="894" fill="#8a7a52" font-size="12" letter-spacing="6" text-anchor="middle">SPIRIT STRIKERS · SIGNALSCOPE</text>
+  <text class="hudtxt" x="150" y="864" fill="#7fae9c" font-size="13" letter-spacing="3">◐ TUNING</text>
+  <g stroke="url(#cu)" stroke-width="5" fill="none" stroke-opacity=".8">
+    <path d="M40 40 h70 M40 40 v70"/><path d="M1560 40 h-70 M1560 40 v70"/>
+    <path d="M40 860 h70 M40 860 v-70"/><path d="M1560 860 h-70 M1560 860 v-70"/>
+  </g>
+</svg></div>
+
+<div class="logo" id="logo"><img class="mark" src="images/striker-swoosh.png" alt="Spirit Striker"><div class="sub">look to the stars</div></div>
+<div class="hint" id="hint">scroll to descend · ★ real models · drag to free-look</div>
+<div class="side">
+  <button id="freebtn">🔓 Free look: OFF</button>
+  <button id="replaybtn">↺ Replay</button>
+</div>
+<div class="hud"><div class="lbl" id="stage">The Signalscope</div><input id="prog" type="range" min="0" max="1000" value="0"></div>
+<div id="load">loading models…</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "./lib/three.module.js",
+  "three/addons/": "./lib/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { ROOM, ITEMS } from './models/layout.js';   // shared floor plan (edit visually in plan.html)
+
+const FAC=[0xe76f51,0x2a9d8f,0x3f7d3a,0xd99000,0x4a6d8c,0x8a4fbd,0xc8a046];
+const TWO_PI=Math.PI*2;
+const clamp=x=>x<0?0:x>1?1:x;
+const smooth01=x=>{x=clamp(x);return x*x*(3-2*x);};
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('gl'),antialias:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(30,1,0.5,9000);
+function size(){ renderer.setSize(innerWidth,innerHeight); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); }
+addEventListener('resize',size); size();
+
+/* ---------- LIGHTS (real PBR models need light; unlit room ignores them) ---------- */
+scene.add(new THREE.HemisphereLight(0x9fb6d8,0x241a10,0.85));
+const key=new THREE.DirectionalLight(0xffe6c0,2.2); key.position.set(300,500,400); scene.add(key);
+const warm=new THREE.PointLight(0xffb060,2.4,2600,2); scene.add(warm);   // moved into the room below
+const cool=new THREE.PointLight(0x8fb6ff,1.4,3000,2); cool.position.set(0,-1500,200); scene.add(cool);
+const tunnelLight=new THREE.PointLight(0xffd9a0,0,1500,2); scene.add(tunnelLight);   // travels with cam down the shaft
+
+const TL=new THREE.TextureLoader();
+function texMat(src,fallback,opts){ opts=opts||{};
+  const m=new THREE.MeshBasicMaterial({color:fallback,side:opts.side||THREE.FrontSide,transparent:!!opts.transparent,opacity:opts.opacity==null?1:opts.opacity});
+  TL.load(src,t=>{ t.colorSpace=THREE.SRGBColorSpace; if(opts.rep){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(opts.rep[0],opts.rep[1]);} m.map=t; m.color.set(0xffffff); m.needsUpdate=true; },undefined,()=>{});
+  return m; }
+
+/* ---------- SKY: stars + Big Dipper + 12 zodiacs ---------- */
+const sky=new THREE.Group(); scene.add(sky);
+function rdir(){ const u=Math.random()*2-1,t=Math.random()*TWO_PI,s=Math.sqrt(1-u*u); return new THREE.Vector3(s*Math.cos(t),u,s*Math.sin(t)); }
+const sp=[]; for(let i=0;i<2200;i++){ const v=rdir(),R=1700+Math.random()*600; sp.push(v.x*R,v.y*R,v.z*R); }
+const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
+sky.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xdfe7ff,size:6,sizeAttenuation:true,transparent:true,opacity:.9})));
+function tangent(dir){ const up=Math.abs(dir.y)>0.9?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0);
+  const u=new THREE.Vector3().crossVectors(up,dir).normalize(),v=new THREE.Vector3().crossVectors(dir,u).normalize(); return [u,v]; }
+function constellation(dir,lay,edges,scale,col,big){
+  const b=tangent(dir),u=b[0],v=b[1],R=1650,pts=lay.map(p=>dir.clone().multiplyScalar(R).add(u.clone().multiplyScalar(p[0]*scale)).add(v.clone().multiplyScalar(p[1]*scale)));
+  const lpos=[]; edges.forEach(e=>{ const a=pts[e[0]],b2=pts[e[1]]; lpos.push(a.x,a.y,a.z,b2.x,b2.y,b2.z); });
+  const lg=new THREE.BufferGeometry(); lg.setAttribute('position',new THREE.Float32BufferAttribute(lpos,3));
+  sky.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:big?.9:.6})));
+  const np=[]; pts.forEach(p=>np.push(p.x,p.y,p.z));
+  const ng=new THREE.BufferGeometry(); ng.setAttribute('position',new THREE.Float32BufferAttribute(np,3));
+  sky.add(new THREE.Points(ng,new THREE.PointsMaterial({color:big?0xfff6dc:0xeaf1ff,size:big?22:15,sizeAttenuation:true})));
+}
+const DIP=[[0,0],[0,1.05],[1.25,1.18],[1.32,.18],[2.35,-.02],[3.25,-.32],[4.15,-.95]];
+const DIPE=[[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]];
+constellation(new THREE.Vector3(0.18,1,0.05).normalize(),DIP,DIPE,150,0xf0dca0,true);
+for(let z=0;z<12;z++){ const az=z/12*TWO_PI,el=0.86;
+  const dir=new THREE.Vector3(Math.cos(az)*Math.cos(el),Math.sin(el),Math.sin(az)*Math.cos(el)).normalize();
+  const rng=s=>()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
+  const r=rng(31+z*7),n=4+((r()*3)|0),lay=[],ed=[]; let k;
+  for(k=0;k<n;k++) lay.push([(r()*2-1),(r()*1.5-.7)]); for(k=0;k<n-1;k++) ed.push([k,k+1]); if(r()>.5&&n>3) ed.push([0,n-1]);
+  constellation(dir,lay,ed,150,FAC[z%7],false); }
+
+/* ---------- OBSERVATORY ROOF: dome + iris doors ---------- */
+const gates=new THREE.Group(); scene.add(gates);
+const APR=0.22;
+const domeMat=texMat('images/obs-dome.png',0x2a2018,{side:THREE.BackSide,transparent:true,opacity:0});
+const dome=new THREE.Mesh(new THREE.SphereGeometry(660,56,30,0,TWO_PI,APR,Math.PI/2-APR+0.02),domeMat);
+gates.add(dome);
+const irisMat=texMat('images/obs-doors.png',0x3a2a14,{side:THREE.DoubleSide,transparent:true,opacity:0});
+const iris=new THREE.Mesh(new THREE.CircleGeometry(660*Math.sin(APR)+22,48),irisMat);
+iris.rotation.x=Math.PI/2; iris.position.y=660*Math.cos(APR)-4; gates.add(iris);
+
+/* ---------- THE TUNNEL (enclosed copper tube + brass flange rings, stacked) ---------- */
+const SHAFT_TOP=150, SHAFT_BOT=-1430, SR=150;
+const shaftMat=new THREE.MeshBasicMaterial({color:0xb8763a,side:THREE.BackSide});
+const shaft=new THREE.Mesh(new THREE.CylinderGeometry(SR,SR,SHAFT_TOP-SHAFT_BOT,48,1,true),shaftMat);
+shaft.position.y=(SHAFT_TOP+SHAFT_BOT)/2; scene.add(shaft);
+TL.load('images/tunnel-copper-sm.jpg',t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(7,16); shaftMat.map=t; shaftMat.color.set(0xffffff); shaftMat.needsUpdate=true; });
+// brass flange rings every ~200u so the tube reads as stacked segments (matches Blender Tunnel collection)
+const tube=new THREE.Group(); scene.add(tube);
+const ringMat=new THREE.MeshStandardMaterial({color:0x8a5a22,metalness:0.95,roughness:0.35});
+for(let ry=SHAFT_TOP-40; ry>SHAFT_BOT+60; ry-=210){
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(SR-6,14,12,48),ringMat);
+  ring.rotation.x=Math.PI/2; ring.position.y=ry; tube.add(ring);
+}
+// ladder down the shaft
+const ladder=new THREE.Group(); scene.add(ladder);
+const ladMat=new THREE.MeshStandardMaterial({color:0x3a2a16,metalness:0.8,roughness:0.5}), LZ=-120;
+[-28,28].forEach(rx=>{ const rail=new THREE.Mesh(new THREE.BoxGeometry(9,SHAFT_TOP-SHAFT_BOT,9),ladMat); rail.position.set(rx,(SHAFT_TOP+SHAFT_BOT)/2,LZ); ladder.add(rail); });
+for(let ry=SHAFT_TOP-50; ry>SHAFT_BOT+40; ry-=66){ const rung=new THREE.Mesh(new THREE.BoxGeometry(64,8,8),ladMat); rung.position.set(0,ry,LZ); ladder.add(rung); }
+
+/* ---------- THE ROOM (Victorian observatory, textured, unlit so it stays bright) ---------- */
+const FLOORY=-1790, CEILY=-1430, BACKZ=-720, SIDEX=820, FRONTZ=520;
+const room=new THREE.Group(); scene.add(room);
+function quad(w,h,mat,rx,ry,x,y,z){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat); m.rotation.x=rx||0; m.rotation.y=ry||0; m.position.set(x,y,z); room.add(m); return m; }
+const matStone=texMat('images/obs-stone.png',0x20242b,{side:THREE.DoubleSide,rep:[2,2]});
+const matWall2=texMat('images/obs-wall2.png',0x241a12,{side:THREE.DoubleSide});
+const matWallP=()=>texMat('images/obs-wall.png',0x241a12,{side:THREE.DoubleSide});
+const matCeil =texMat('images/obs-dome.png',0x1d160f,{side:THREE.DoubleSide});
+const matWood =texMat('images/obs-wood.png',0x4a331b,{side:THREE.DoubleSide});
+quad(SIDEX*2,BACKZ*-1+FRONTZ, matStone, -Math.PI/2,0, 0,FLOORY,(BACKZ+FRONTZ)/2);
+const compass=new THREE.Mesh(new THREE.PlaneGeometry(980,980),texMat('images/compass.png',0xffffff,{side:THREE.DoubleSide,transparent:true}));
+compass.rotation.x=-Math.PI/2; compass.position.set(0,FLOORY+1.5,-120); room.add(compass);
+quad(SIDEX*2,BACKZ*-1+FRONTZ, matCeil,  Math.PI/2,0, 0,CEILY,(BACKZ+FRONTZ)/2);
+quad(SIDEX*2,CEILY-FLOORY, matWall2, 0,0, 0,(FLOORY+CEILY)/2,BACKZ);
+quad(FRONTZ-BACKZ,CEILY-FLOORY, matWallP(), 0,Math.PI/2, -SIDEX,(FLOORY+CEILY)/2,(BACKZ+FRONTZ)/2);
+quad(FRONTZ-BACKZ,CEILY-FLOORY, matWallP(), 0,-Math.PI/2, SIDEX,(FLOORY+CEILY)/2,(BACKZ+FRONTZ)/2);
+const hatch=new THREE.Mesh(new THREE.CircleGeometry(170,40),texMat('images/obs-hatch.png',0x3a2a18,{side:THREE.DoubleSide}));
+hatch.rotation.x=Math.PI/2; hatch.position.set(0,CEILY-2,40); room.add(hatch);
+// the wordmark mounted on the back wall above the porthole (uses the logo's current state)
+const wallLogo=new THREE.Mesh(new THREE.PlaneGeometry(520,157),
+  texMat('images/striker-swoosh.png',0xf3e684,{transparent:true}));
+wallLogo.position.set(0,-1478,BACKZ+4); room.add(wallLogo);
+// desk
+function box(w,h,d,x,y,z,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:c})); m.position.set(x,y,z); room.add(m); return m; }
+function boxM(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); room.add(m); return m; }
+// warm desk light (the real desk + props load below as GLBs)
+warm.position.set(0,FLOORY+320,-460);
+
+/* ---------- REAL MODELS (low-poly GLB, meshopt) ---------- */
+const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const loadEl=document.getElementById('load');
+let nLoaded=0; const nTotal=ITEMS.length;
+const models={};
+function placeGLB(url,key,targetH,x,z,opts){
+  opts=opts||{};
+  loader.load(url,gltf=>{
+    const obj=gltf.scene;
+    obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; if(o.material) o.material.side=THREE.DoubleSide; } });
+    let box=new THREE.Box3().setFromObject(obj); const sz=new THREE.Vector3(); box.getSize(sz);
+    const dim = opts.fitBy==='radius' ? Math.max(sz.x,sz.z) : sz.y;
+    const f=targetH/Math.max(1e-3,dim); obj.scale.setScalar(f);
+    if(opts.rotY) obj.rotation.y=opts.rotY;
+    obj.userData.baseRotY=opts.rotY||0; obj.userData.spin=!!opts.spin;
+    obj.updateMatrixWorld(true);
+    box=new THREE.Box3().setFromObject(obj); const c=new THREE.Vector3(); box.getCenter(c);
+    obj.position.x+=x-c.x; obj.position.z+=z-c.z;
+    if(opts.topY!=null){ obj.position.y+= opts.topY-box.max.y; }        // hang from the ceiling
+    else { const baseY=(opts.baseY!=null)?opts.baseY:FLOORY; obj.position.y+= baseY-box.min.y; }
+    scene.add(obj); models[key]=obj;
+    const fin=new THREE.Box3().setFromObject(obj);
+    if(opts.onLoad) opts.onLoad(obj,fin);
+    nLoaded++; loadEl.textContent = nLoaded>=nTotal ? '✓ models loaded' : `loading models… ${nLoaded}/${nTotal}`;
+    if(nLoaded>=nTotal) setTimeout(()=>loadEl.style.opacity=0,1200);
+    console.log('loaded',key,'top',fin.max.y|0);
+  },undefined,err=>{ loadEl.textContent='load error: '+key; console.error('GLB fail',key,err); });
+}
+// ---- place everything straight from the floor plan (models/layout.js; edit visually in plan.html) ----
+const DEG=Math.PI/180;
+function placeItem(it, deskTop){
+  const opts={ rotY:(it.rot||0)*DEG, spin:it.spin };
+  if(it.on==='ceiling')      opts.topY = CEILY;          // hangs from the ceiling
+  else if(it.on==='table')   opts.baseY = deskTop;       // sits on the desk top
+  else                       opts.baseY = FLOORY;        // on the floor
+  placeGLB('models/'+it.model, it.id, it.h, it.x, it.z, opts);
+}
+const deskDef   = ITEMS.find(it=>it.id==='desk');
+const tableItems= ITEMS.filter(it=>it.on==='table');
+const restItems = ITEMS.filter(it=>it.on!=='table' && it.id!=='desk');
+restItems.forEach(it=> placeItem(it, FLOORY));            // floor + ceiling items don't need the desk top
+if(deskDef){
+  placeGLB('models/'+deskDef.model,'desk',deskDef.h,deskDef.x,deskDef.z,{ rotY:(deskDef.rot||0)*DEG, baseY:FLOORY, onLoad:function(o,b){
+    const top=b.max.y; tableItems.forEach(it=> placeItem(it, top));   // table props sit on the desk's measured top
+  }});
+}
+// NOTE: the Tripo tunnel-piece GLBs don't tile into a clean tube; the descent uses the coded copper shaft + rings + ladder.
+
+/* ---------- CAMERA PATH (stars → doors → shaft → room) ---------- */
+const PATH=[
+ {p:0.00, pos:[0,0,0],          tgt:[0,300,0]},
+ {p:0.40, pos:[0,0,0],          tgt:[0,300,0]},
+ {p:0.50, pos:[0,-80,30],       tgt:[0,-380,-150]},
+ {p:0.56, pos:[0,-380,30],      tgt:[0,-780,-150]},
+ {p:0.82, pos:[0,-1230,30],     tgt:[0,-1560,-150]},
+ {p:0.90, pos:[0,-1500,60],     tgt:[0,-1640,-260]},
+ {p:0.96, pos:[0,-1600,320],    tgt:[0,-1620,-360]},
+ {p:1.00, pos:[0,-1604,360],    tgt:[0,-1618,-380]}
+];
+// the final resting view is driven by the plan's camera (plan.html → layout.js ROOM.cam*)
+PATH[PATH.length-1].pos=[ROOM.camX, ROOM.camY, ROOM.camZ];
+PATH[PATH.length-1].tgt=[ROOM.camX, ROOM.camY-14, ROOM.camLookZ];
+function v3at(arr,key,p){ for(let i=0;i<arr.length-1;i++){ if(p<=arr[i+1].p){ const s=smooth01((p-arr[i].p)/(arr[i+1].p-arr[i].p||1));
+  const A=arr[i][key],B=arr[i+1][key]; return new THREE.Vector3(lerp(A[0],B[0],s),lerp(A[1],B[1],s),lerp(A[2],B[2],s)); } }
+  const L=arr[arr.length-1][key]; return new THREE.Vector3(L[0],L[1],L[2]); }
+
+/* ---------- CONTROLS ---------- */
+let prog=0,dragYaw=0,dragPitch=0,dragging=false,lx=0,ly=0,T=0,freelook=false;
+const slider=document.getElementById('prog'),scope=document.getElementById('scope'),logo=document.getElementById('logo'),
+    hint=document.getElementById('hint'),stageEl=document.getElementById('stage'),
+    radar=document.getElementById('radar'),needle=document.getElementById('needle'),freq=document.getElementById('freq'),
+    freebtn=document.getElementById('freebtn'),replaybtn=document.getElementById('replaybtn');
+slider.oninput=()=>{ prog=slider.value/1000; };
+addEventListener('wheel',e=>{ prog=clamp(prog+(e.deltaY>0?0.011:-0.011)); slider.value=prog*1000; },{passive:true});
+const gl=document.getElementById('gl');
+gl.addEventListener('pointerdown',e=>{ if(!freelook)return; dragging=true; lx=e.clientX; ly=e.clientY; });
+addEventListener('pointermove',e=>{ if(!dragging)return; dragYaw-=(e.clientX-lx)*0.0026; dragPitch-=(e.clientY-ly)*0.0026; dragPitch=Math.max(-0.9,Math.min(0.9,dragPitch)); lx=e.clientX; ly=e.clientY; });
+addEventListener('pointerup',()=>{ dragging=false; });
+freebtn.onclick=()=>{ freelook=!freelook; freebtn.textContent=(freelook?'🔓 Free look: ON':'🔓 Free look: OFF'); freebtn.classList.toggle('on',freelook); if(!freelook){dragYaw=0;dragPitch=0;} };
+replaybtn.onclick=()=>{ prog=0; slider.value=0; };
+
+const STAGES=[[0,'The Signalscope'],[0.24,'Sealing the dome'],[0.5,'Down the tunnel'],[0.9,'The observatory']];
+const U0=new THREE.Vector3(0,0,-1),U1=new THREE.Vector3(0,1,0),tmpU=new THREE.Vector3(),tmpD=new THREE.Vector3();
+let AUTO=/[?&]auto=1/.test(location.search);   // ?auto=1 → the intro plays itself; any input hands control back
+addEventListener('wheel',()=>{AUTO=false;},{passive:true});
+gl.addEventListener('pointerdown',()=>{AUTO=false;});
+slider.addEventListener('pointerdown',()=>{AUTO=false;});
+function render(){
+  T+=0.016;
+  if(AUTO){ prog=clamp(prog+0.00040); slider.value=prog*1000; if(prog>=1) AUTO=false; }
+  const pos=v3at(PATH,'pos',prog); cam.position.copy(pos);
+  const fov=30+smooth01((prog-0.22)/0.16)*34;
+  if(Math.abs(cam.fov-fov)>0.02){ cam.fov=fov; cam.updateProjectionMatrix(); }
+  tmpU.copy(U0).lerp(U1,smooth01((prog-0.86)/0.10)).normalize(); cam.up.copy(tmpU);
+  if(prog<0.40 && !freelook){
+    const sweep=clamp(prog/0.20);
+    const el=lerp(1.30,0.86,smooth01(sweep)), az=TWO_PI*smooth01(sweep);
+    tmpD.set(Math.cos(az)*Math.cos(el),Math.sin(el),Math.sin(az)*Math.cos(el));
+    const skyTgt=pos.clone().add(tmpD.clone().multiplyScalar(300));
+    const upTgt=pos.clone().add(new THREE.Vector3(0,300,0));
+    cam.lookAt(skyTgt.lerp(upTgt,smooth01((prog-0.20)/0.12)));
+  } else { cam.lookAt(v3at(PATH,'tgt',prog)); }
+  if(freelook){ cam.rotateY(dragYaw); cam.rotateX(dragPitch); }
+
+  const s=smooth01((prog-0.22)/0.10);
+  scope.style.transform='translateY('+(s*120).toFixed(1)+'%) scale('+(1+0.12*s)+') rotate('+(s*-3).toFixed(1)+'deg)';
+  scope.style.opacity = s<0.72?1:Math.max(0,1-(s-0.72)/0.28);
+  radar.setAttribute('transform','rotate('+((T*52)%360)+' 150 150)');
+  needle.setAttribute('transform','translate('+(Math.sin(T*0.5)*70).toFixed(1)+',0)');
+  freq.textContent=(88.7+Math.sin(T*0.5)*0.6).toFixed(1);
+
+  const shut=smooth01((prog-0.24)/0.12), op=smooth01((prog-0.20)/0.10);
+  domeMat.opacity=op; irisMat.opacity=op;
+  const sc=lerp(0.05,1,shut); iris.scale.set(sc,sc,sc);
+  gates.visible=prog>0.18 && prog<0.58;
+  sky.visible=prog<0.52;
+  shaft.visible=tube.visible=prog>0.42;
+  ladder.visible=prog>0.42 && prog<0.93;
+
+  // gentle life: lizard idle bob once you're in the room
+  if(models.lizard){ const inRoom=smooth01((prog-0.9)/0.1); models.lizard.position.y = (models.lizard.userData.baseY ?? (models.lizard.userData.baseY=models.lizard.position.y)) + Math.sin(T*1.6)*4*inRoom; }
+  // rotating TV: any item flagged spin swivels back and forth
+  for(const k in models){ const mm=models[k]; if(mm&&mm.userData&&mm.userData.spin) mm.rotation.y = mm.userData.baseRotY + Math.sin(T*0.5)*0.6; }
+
+  logo.style.opacity=prog>0.06?0:1; hint.style.opacity=prog>0.05?0:1;
+  let st=STAGES[0][1]; for(let i=0;i<STAGES.length;i++) if(prog>=STAGES[i][0]) st=STAGES[i][1]; stageEl.textContent=st;
+  renderer.render(scene,cam);
+  requestAnimationFrame(render);
+}
+render();
+window.SS={THREE,scene,cam,models,get prog(){return prog;},set prog(v){prog=v;slider.value=v*1000;},
+  bbox(k){const o=models[k];if(!o)return null;const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3(),c=new THREE.Vector3();b.getSize(s);b.getCenter(c);return{size:[s.x|0,s.y|0,s.z|0],center:[c.x|0,c.y|0,c.z|0],min:[b.min.x|0,b.min.y|0,b.min.z|0],pos:[o.position.x|0,o.position.y|0,o.position.z|0]};}};
+const m=/[?&]p=(\d+)/.exec(location.search); if(m){ prog=(+m[1])/100; slider.value=prog*1000; }
+</script>
+</body></html>

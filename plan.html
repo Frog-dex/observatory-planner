@@ -1,0 +1,240 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Observatory — Floor Plan</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#08131f;color:#bfe6ff;font-family:'Courier New',ui-monospace,monospace;overflow:hidden}
+#wrap{display:flex;height:100%}
+#stage{flex:1;position:relative}
+#plan{width:100%;height:100%;display:block;touch-action:none}
+#stage.dropping::after{content:'⬇ drop .glb to add it to the plan';position:absolute;inset:12px;border:3px dashed #7fdfff;border-radius:14px;
+  display:grid;place-items:center;font-size:20px;color:#7fdfff;background:rgba(8,19,31,.72);pointer-events:none}
+#panel{width:312px;background:#0c1a29;border-left:1px solid #17384f;padding:14px 16px;display:flex;flex-direction:column;gap:9px;overflow:auto}
+h1{font-size:15px;letter-spacing:.16em;color:#7fdfff;margin:0 0 2px;text-transform:uppercase}
+.sub{font-size:11px;color:#5f8ba6;margin:0 0 6px;letter-spacing:.04em}
+.sel{font-size:13px;color:#f0dca0;letter-spacing:.1em}
+label{font-size:11px;color:#7fb0c8;display:block;margin:7px 0 2px;letter-spacing:.06em}
+input[type=range]{width:100%;accent-color:#7fdfff}
+input[type=number],select{width:100%;background:#08131f;color:#bfe6ff;border:1px solid #1d4763;border-radius:5px;padding:5px 7px;font-family:inherit;font-size:12px}
+.row{display:flex;gap:8px}.row>div{flex:1}
+button{background:#12314a;color:#bfe6ff;border:1px solid #2b6a92;border-radius:6px;padding:8px 10px;font-family:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;margin-top:6px}
+button:hover{background:#184260}
+button.primary{background:#134b39;border-color:#2f8a63;color:#a8f5cf}
+textarea{width:100%;height:110px;background:#050d16;color:#8fd6a8;border:1px solid #1d4763;border-radius:6px;font-family:inherit;font-size:10px;padding:8px;resize:vertical}
+.hint{font-size:10.5px;color:#5f8ba6;line-height:1.5}
+.key{font-size:10.5px;color:#7fb0c8}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 8px;vertical-align:middle}
+#file{display:none}
+.dims{font-size:11px;color:#8fd6a8}
+</style></head>
+<body>
+<div id="wrap">
+  <div id="stage"><svg id="plan"></svg></div>
+  <div id="panel">
+    <div><h1>Observatory · Floor Plan</h1><p class="sub">top-down · real model sprites · drag ◉ camera</p></div>
+    <button id="addbtn">➕ Add model (.glb) — auto top-view</button>
+    <input id="file" type="file" accept=".glb">
+    <div class="sel" id="selName">— nothing selected —</div>
+    <div id="controls" style="display:none">
+      <div class="row"><div><label>X</label><input type="number" id="cx" step="5"></div><div><label>Z (depth)</label><input type="number" id="cz" step="5"></div></div>
+      <div id="itemOnly">
+        <label>Rotation — <span id="rotVal">0</span>°</label>
+        <input type="range" id="crot" min="0" max="359" step="5">
+        <div class="row"><div><label>Height</label><input type="number" id="ch" step="5"></div><div><label>Mount on</label>
+          <select id="con"><option value="floor">Floor</option><option value="table">Table top</option><option value="ceiling">Ceiling</option></select></div></div>
+        <div class="dims" id="dims"></div>
+        <label style="margin-top:6px"><input type="checkbox" id="cspin" style="width:auto;accent-color:#7fdfff"> spin (rotating TV)</label>
+        <div class="row"><div><button id="dlsprite" style="display:none">⬇ Save sprite PNG</button></div><div><button id="delitem">🗑 Remove</button></div></div>
+      </div>
+    </div>
+    <div class="key"><span class="sw" style="background:#7fdfff"></span>floor<span class="sw" style="background:#8fe6b0"></span>table<span class="sw" style="background:#c9a0ff"></span>ceiling<span class="sw" style="background:#ffb060"></span>spin<span class="sw" style="background:#ff7f6a"></span>hero
+      <div style="margin-top:4px">opacity = height: floor solid · higher = faded + border</div></div>
+    <button class="primary" id="copy">⧉ Copy layout code</button>
+    <div class="hint">Drag objects to place. Drop a <b>.glb</b> anywhere to add it — it gets auto-oriented, screenshotted from the top, measured, and placed at true scale. The code below is the exact <b>layout.js</b>.</div>
+    <textarea id="out" spellcheck="false"></textarea>
+  </div>
+</div>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { ROOM, ITEMS } from './models/layout.js';
+const SVG='http://www.w3.org/2000/svg';
+const svg=document.getElementById('plan');
+const items=ITEMS.map(o=>Object.assign({baseH:o.h, baseFoot:[...o.foot]},o));
+const room=Object.assign({},ROOM);
+let sel=null;
+const MOUNTCOL={floor:'#7fdfff',table:'#8fe6b0',ceiling:'#c9a0ff'};
+// HEIGHT → OPACITY (continuous): the higher an object sits, the more see-through it gets — but a border appears so it stays visible.
+const ELEV={floor:0,table:150,ceiling:360};
+function tierFor(it){ const e=ELEV[it.on]||0, t=Math.min(1,e/360);
+  return { op: 1-0.58*t, bw: t>0 ? 1.5+2.5*t : 0, dash: it.on==='ceiling' }; }
+
+const PAD=90, x0=ROOM.minX-PAD, y0=ROOM.minZ-PAD, W=(ROOM.maxX-ROOM.minX)+2*PAD, H=(ROOM.maxZ-ROOM.minZ)+2*PAD;
+svg.setAttribute('viewBox',`${x0} ${y0} ${W} ${H}`);
+svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+function el(tag,attrs,parent){ const e=document.createElementNS(SVG,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); (parent||svg).appendChild(e); return e; }
+
+// ---- backdrop ----
+const bg=el('g',{});
+el('rect',{x:x0,y:y0,width:W,height:H,fill:'#08131f'},bg);
+for(let gx=Math.ceil(ROOM.minX/100)*100; gx<=ROOM.maxX; gx+=100) el('line',{x1:gx,y1:ROOM.minZ,x2:gx,y2:ROOM.maxZ,stroke:gx===0?'#1d4763':'#102a3d','stroke-width':gx===0?2:1},bg);
+for(let gz=Math.ceil(ROOM.minZ/100)*100; gz<=ROOM.maxZ; gz+=100) el('line',{x1:ROOM.minX,y1:gz,x2:ROOM.maxX,y2:gz,stroke:gz===0?'#1d4763':'#102a3d','stroke-width':gz===0?2:1},bg);
+el('rect',{x:ROOM.minX,y:ROOM.minZ,width:ROOM.maxX-ROOM.minX,height:ROOM.maxZ-ROOM.minZ,fill:'none',stroke:'#7fdfff','stroke-width':5},bg);
+el('text',{x:0,y:ROOM.minZ-34,fill:'#4f7f98','font-size':26,'text-anchor':'middle','letter-spacing':4},bg).textContent='BACK WALL';
+el('circle',{cx:0,cy:-120,r:70,fill:'none',stroke:'#284a3c','stroke-width':2},bg);
+el('circle',{cx:0,cy:-120,r:30,fill:'none',stroke:'#284a3c','stroke-width':2},bg);
+
+// ---- items + camera ----
+const layer=el('g',{});
+function draw(){
+  layer.innerHTML='';
+  const cg=el('g',{'data-cam':'1',style:'cursor:grab'},layer);
+  el('polygon',{points:`${room.camX},${room.camZ} ${ROOM.minX*0.92},${ROOM.minZ} ${ROOM.maxX*0.92},${ROOM.minZ}`,fill:'#f0dca0','fill-opacity':0.045,stroke:'#5f4a24','stroke-width':1.2,'stroke-dasharray':'10 10'},cg);
+  el('circle',{cx:room.camX,cy:room.camZ,r:17,fill:'#f0dca0',stroke:sel==='__cam'?'#fff':'#7a5f2a','stroke-width':sel==='__cam'?4:2},cg);
+  el('text',{x:room.camX,y:room.camZ+44,fill:'#c9a86a','font-size':22,'text-anchor':'middle'},cg).textContent='CAMERA';
+  const ordered=[...items].sort((a,b)=>(ELEV[a.on]||0)-(ELEV[b.on]||0));
+  ordered.forEach(it=>{
+    const isSel=sel===it.id;
+    const col = it.hero?'#ff7f6a' : it.spin?'#ffb060' : (MOUNTCOL[it.on]||'#7fdfff');
+    const t=tierFor(it);
+    const g=el('g',{transform:`translate(${it.x},${it.z}) rotate(${it.rot})`,'data-id':it.id,style:'cursor:grab'},layer);
+    const w=it.foot[0],d=it.foot[1];
+    if(it.sprite){
+      el('image',{href:it.sprite,x:-w/2,y:-d/2,width:w,height:d,opacity:t.op,preserveAspectRatio:'none'},g);
+      if(t.bw>0||isSel) el('rect',{x:-w/2-3,y:-d/2-3,width:w+6,height:d+6,rx:6,fill:'none',
+        stroke:isSel?'#f0dca0':col,'stroke-width':isSel?4:t.bw,'stroke-dasharray':t.dash?'8 6':'none'},g);
+    } else {
+      el('rect',{x:-w/2,y:-d/2,width:w,height:d,rx:6,fill:col,'fill-opacity':(isSel?0.34:0.15)*t.op,stroke:isSel?'#f0dca0':col,'stroke-width':isSel?4:Math.max(2,t.bw)},g);
+    }
+    el('line',{x1:0,y1:0,x2:0,y2:-(d/2+22),stroke:isSel?'#f0dca0':col,'stroke-width':3},g);
+    el('polygon',{points:`0,${-(d/2+34)} -8,${-(d/2+18)} 8,${-(d/2+18)}`,fill:isSel?'#f0dca0':col},g);
+    const lab=el('g',{transform:`rotate(${-it.rot})`},g);
+    el('text',{x:0,y:d/2+22,fill:isSel?'#f0dca0':'#9fc4d8','font-size':17,'text-anchor':'middle','font-weight':'bold','paint-order':'stroke',stroke:'#08131f','stroke-width':4},lab).textContent=it.id;
+    if(isSel) el('text',{x:0,y:d/2+44,fill:'#cfe8f5','font-size':15,'text-anchor':'middle','paint-order':'stroke',stroke:'#08131f','stroke-width':4},lab).textContent=`${it.x|0}, ${it.z|0} · ${it.rot}° · ${it.on}`;
+  });
+}
+function fmt(){
+  const lines=items.map(it=>{
+    const sp = it.sprite && it.sprite.startsWith('data:') ? `models/top/${it.id}.png` : (it.sprite||'');
+    const p=[`id:'${it.id}'`,`model:'${it.model}'`,`on:'${it.on}'`,`x:${it.x|0}`,`z:${it.z|0}`,`rot:${it.rot|0}`,`h:${it.h|0}`,`foot:[${it.foot[0]|0},${it.foot[1]|0}]`];
+    if(sp)p.push(`sprite:'${sp}'`); if(it.spin)p.push('spin:true'); if(it.hero)p.push('hero:true');
+    return '  { '+p.join(', ')+' }';
+  });
+  return `// camera → camX:${room.camX|0}, camZ:${room.camZ|0}\nexport const ITEMS = [\n`+lines.join(',\n')+'\n];';
+}
+const out=document.getElementById('out');
+function refresh(){ draw(); out.value=fmt(); }
+window.getLayout=()=>items; window.getCam=()=>({camX:room.camX,camZ:room.camZ}); window.layoutCode=fmt;
+
+// ---- panel ----
+const C={name:document.getElementById('selName'),box:document.getElementById('controls'),itemOnly:document.getElementById('itemOnly'),
+  x:document.getElementById('cx'),z:document.getElementById('cz'),rot:document.getElementById('crot'),
+  rotv:document.getElementById('rotVal'),h:document.getElementById('ch'),on:document.getElementById('con'),spin:document.getElementById('cspin'),
+  dims:document.getElementById('dims'),dl:document.getElementById('dlsprite'),del:document.getElementById('delitem')};
+function select(id){
+  sel=id;
+  if(id==='__cam'){ C.box.style.display='block'; C.itemOnly.style.display='none'; C.name.textContent='◉ CAMERA'; C.x.value=room.camX|0; C.z.value=room.camZ|0; refresh(); return; }
+  const it=items.find(o=>o.id===id);
+  if(!it){ C.box.style.display='none'; C.name.textContent='— nothing selected —'; refresh(); return; }
+  C.box.style.display='block'; C.itemOnly.style.display='block'; C.name.textContent='▸ '+it.id;
+  C.x.value=it.x|0; C.z.value=it.z|0; C.rot.value=it.rot; C.rotv.textContent=it.rot; C.h.value=it.h|0; C.on.value=it.on; C.spin.checked=!!it.spin;
+  C.dims.textContent=`footprint ${it.foot[0]|0} × ${it.foot[1]|0} · height ${it.h|0}`;
+  C.dl.style.display = it.sprite&&it.sprite.startsWith('data:') ? 'block':'none';
+  refresh();
+}
+function setXZ(nx,nz){ if(sel==='__cam'){ room.camX=nx; room.camZ=nz; } else { const it=items.find(o=>o.id===sel); if(it){it.x=nx;it.z=nz;} } refresh(); }
+function updItem(k,v){ const it=items.find(o=>o.id===sel); if(!it)return; it[k]=v;
+  if(k==='h'&&it.baseH){ const f=v/it.baseH; it.foot=[Math.round(it.baseFoot[0]*f),Math.round(it.baseFoot[1]*f)];
+    C.dims.textContent=`footprint ${it.foot[0]} × ${it.foot[1]} · height ${it.h|0}`; }
+  refresh(); }
+C.x.oninput=e=>setXZ(+e.target.value, sel==='__cam'?room.camZ:(items.find(o=>o.id===sel)||{}).z);
+C.z.oninput=e=>setXZ(sel==='__cam'?room.camX:(items.find(o=>o.id===sel)||{}).x, +e.target.value);
+C.h.oninput=e=>updItem('h',+e.target.value); C.on.onchange=e=>updItem('on',e.target.value);
+C.rot.oninput=e=>{ C.rotv.textContent=e.target.value; updItem('rot',+e.target.value); };
+C.spin.onchange=e=>updItem('spin',e.target.checked);
+C.del.onclick=()=>{ const i=items.findIndex(o=>o.id===sel); if(i>=0){ items.splice(i,1); select(null); } };
+C.dl.onclick=()=>{ const it=items.find(o=>o.id===sel); if(!it||!it.sprite.startsWith('data:'))return;
+  const a=document.createElement('a'); a.href=it.sprite; a.download=it.id+'.png'; a.click(); };
+document.getElementById('copy').onclick=()=>{ navigator.clipboard.writeText(fmt()); const b=document.getElementById('copy'); b.textContent='✓ Copied'; setTimeout(()=>b.textContent='⧉ Copy layout code',1200); };
+
+// ---- drag items + camera ----
+let drag=null;
+function toUser(e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+svg.addEventListener('pointerdown',e=>{
+  const cam=e.target.closest('[data-cam]'), g=e.target.closest('[data-id]'), u=toUser(e);
+  if(cam){ select('__cam'); drag={cam:true,dx:room.camX-u.x,dz:room.camZ-u.y}; svg.setPointerCapture(e.pointerId); return; }
+  if(!g){ select(null); return; }
+  const id=g.getAttribute('data-id'); select(id); const it=items.find(o=>o.id===id);
+  drag={id,dx:it.x-u.x,dz:it.z-u.y}; svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener('pointermove',e=>{ if(!drag)return; const u=toUser(e);
+  const nx=Math.round((u.x+drag.dx)/5)*5, nz=Math.round((u.y+drag.dz)/5)*5;
+  if(drag.cam){ room.camX=nx; room.camZ=nz; } else { const it=items.find(o=>o.id===drag.id); it.x=nx; it.z=nz; }
+  C.x.value=nx; C.z.value=nz; refresh();
+});
+svg.addEventListener('pointerup',()=>{ drag=null; });
+
+// ============ UPLOAD TOOL: drop/pick a .glb → auto top-view sprite + measurements ============
+const VIEW=512;
+let sprRenderer=null, sprCam=null, sprScene=null, sprLight=null;
+function spriteRig(){
+  if(sprRenderer) return;
+  sprRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+  sprRenderer.setPixelRatio(1); sprRenderer.setSize(VIEW,VIEW); sprRenderer.setClearColor(0,0);
+  sprRenderer.outputColorSpace=THREE.SRGBColorSpace;
+  sprScene=new THREE.Scene();
+  sprScene.add(new THREE.HemisphereLight(0xffffff,0x888888,2.2));
+  sprLight=new THREE.DirectionalLight(0xffffff,1.6); sprLight.position.set(200,500,300); sprScene.add(sprLight);
+  sprCam=new THREE.OrthographicCamera(-VIEW/2,VIEW/2,VIEW/2,-VIEW/2,0.1,5000);
+  sprCam.position.set(0,1000,0); sprCam.up.set(0,0,1); sprCam.lookAt(0,0,0);   // image +y = plan +z
+}
+const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+window.addModelBuffer=function(buf,name,h){
+  h=h||120;
+  return new Promise((res,rej)=>{
+    spriteRig();
+    loader.parse(buf,'',g=>{
+      const obj=g.scene;
+      obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; if(o.material) o.material.side=THREE.DoubleSide; } });
+      let b=new THREE.Box3().setFromObject(obj); const s=new THREE.Vector3(); b.getSize(s);
+      obj.scale.setScalar(h/Math.max(1e-3,s.y));                       // same scale rule as scene.html
+      obj.updateMatrixWorld(true);
+      b=new THREE.Box3().setFromObject(obj); const c=new THREE.Vector3(); b.getCenter(c);
+      obj.position.sub(c);
+      sprScene.add(obj); sprRenderer.render(sprScene,sprCam); sprScene.remove(obj);
+      // crop the render to content (alpha bbox) — cropped px == world units
+      const full=sprRenderer.domElement;
+      const cv=document.createElement('canvas'); cv.width=cv.height=VIEW;
+      const cx2=cv.getContext('2d'); cx2.drawImage(full,0,0);
+      const im=cx2.getImageData(0,0,VIEW,VIEW).data;
+      let minx=VIEW,miny=VIEW,maxx=0,maxy=0;
+      for(let y=0;y<VIEW;y++)for(let x=0;x<VIEW;x++){ if(im[(y*VIEW+x)*4+3]>8){ if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; } }
+      if(maxx<minx){ rej('empty render'); return; }
+      const w=maxx-minx+1, d=maxy-miny+1;
+      const crop=document.createElement('canvas'); crop.width=w; crop.height=d;
+      crop.getContext('2d').drawImage(cv,minx,miny,w,d,0,0,w,d);
+      const id=(name||'model').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,20)||'model';
+      let uid=id,n=2; while(items.find(o=>o.id===uid)) uid=id+(n++);
+      const fin=new THREE.Box3().setFromObject(obj); const fs=new THREE.Vector3(); fin.getSize(fs);
+      const it={id:uid,model:(name||uid)+'.glb',on:'floor',x:0,z:150,rot:0,h:h,
+        foot:[w,d],sprite:crop.toDataURL('image/png'),baseH:h,baseFoot:[w,d]};
+      items.push(it); select(uid);
+      res({id:uid,w,d,h:+fs.y.toFixed(1)});
+    },e=>rej(e));
+  });
+};
+async function addModelFile(file){
+  try{ const buf=await file.arrayBuffer(); const r=await window.addModelBuffer(buf,file.name.replace(/\.glb$/i,''));
+    console.log('added',r); }
+  catch(e){ alert('Could not read that model: '+e); }
+}
+const stage=document.getElementById('stage');
+document.getElementById('addbtn').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{ if(e.target.files[0]) addModelFile(e.target.files[0]); e.target.value=''; };
+['dragenter','dragover'].forEach(ev=>stage.addEventListener(ev,e=>{ e.preventDefault(); stage.classList.add('dropping'); }));
+['dragleave','drop'].forEach(ev=>stage.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'){ const f=[...e.dataTransfer.files].find(f=>/\.glb$/i.test(f.name)); if(f) addModelFile(f); } stage.classList.remove('dropping'); }));
+
+refresh();
+</script>
+</body></html>
