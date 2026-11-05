@@ -1,0 +1,16 @@
+{
+  "name": "observatory-planner",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Top-down layout editor + Three.js room for the Spirit Strikers observatory",
+  "type": "module",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "serve": "python3 -m http.server 8803",
+    "check": "node scripts/check.mjs",
+    "screenshots": "node scripts/check.mjs --shots"
+  },
+  "devDependencies": {
+    "three": "0.186.1"
+  }
+}

@@ -1,0 +1,227 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Model Cabinet</title>
+<meta name="description" content="Every low-poly model in the observatory on a turntable, with measurements and its place in the floor plan.">
+<link rel="icon" href="models/top/globe.png">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#05070f;--panel:#0c0a12;--line:#2e2214;--ink:#e8dcc0;--dim:#9a8a68;--gold:#f0dca0;--brass:#caa86a;--mono:#8fd6a8}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Playfair Display',Georgia,serif}
+body{min-height:100vh;display:grid;grid-template-columns:minmax(300px,420px) 1fr;grid-template-rows:auto 1fr}
+header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{margin:0;font-size:20px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase}
+header .sub{color:var(--dim);font-size:13px}
+header nav{margin-left:auto;display:flex;gap:8px}
+.btn{font:inherit;font-size:12px;letter-spacing:.12em;text-decoration:none;color:var(--brass);border:1px solid #6a4f2c;border-radius:8px;padding:7px 11px;background:rgba(8,7,15,.72);cursor:pointer}
+.btn:hover{border-color:var(--gold)}
+#list{overflow:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;align-content:start;border-right:1px solid var(--line);max-height:calc(100vh - 60px)}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;color:inherit;font:inherit;text-align:left}
+.tile:hover{border-color:var(--brass)}
+.tile[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 0 18px rgba(240,220,160,.15)}
+.tile .thumb{aspect-ratio:1;border-radius:8px;background:radial-gradient(circle,#18202f,#0a0d16 70%);display:grid;place-items:center;overflow:hidden}
+.tile .thumb img{max-width:86%;max-height:86%;object-fit:contain}
+.tile .thumb span{font-size:30px;opacity:.5}
+.tile b{font-size:14px;color:var(--gold);letter-spacing:.04em}
+.tile small{font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+#viewer{position:relative;display:grid;grid-template-rows:1fr auto;min-height:0}
+#gl{width:100%;height:100%;display:block;min-height:0;touch-action:none}
+#overlay{position:absolute;left:18px;top:14px;pointer-events:none}
+#overlay h2{margin:0;font-size:clamp(26px,4vw,44px);color:var(--gold);text-shadow:0 0 18px rgba(202,168,106,.5);letter-spacing:.04em}
+#overlay p{margin:4px 0 0;color:#c9bb98;max-width:440px;font-size:15px;line-height:1.5}
+#spinner{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font-size:13px;letter-spacing:.2em;pointer-events:none}
+#tools{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:6px}
+#info{display:grid;grid-template-columns:auto 1fr auto;gap:18px;padding:14px 18px;border-top:1px solid var(--line);background:var(--panel);align-items:start}
+#topview{width:110px;height:110px;border-radius:10px;background:#08131f;border:1px solid #17384f;display:grid;place-items:center;position:relative}
+#topview img{max-width:88%;max-height:88%}
+#topview::after{content:'TOP VIEW';position:absolute;bottom:-16px;font:10px monospace;letter-spacing:.14em;color:#5f8ba6}
+dl{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px 16px}
+dt{font:10px monospace;letter-spacing:.14em;color:#7fb0c8;text-transform:uppercase}
+dd{margin:2px 0 0;font:13px 'Courier New',monospace;color:var(--mono)}
+#actions{display:flex;flex-direction:column;gap:6px}
+@media (max-width:860px){
+  body{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+  #viewer{grid-row:2;grid-template-rows:56vh auto}
+  #info dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #list{grid-row:3;border-right:0;max-height:none;grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  #info{grid-template-columns:auto 1fr;gap:12px}
+  #actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+  #topview{width:84px;height:84px}
+  #overlay p{display:none}
+  header nav{margin-left:0}
+}
+</style></head>
+<body>
+<header>
+  <h1>Model Cabinet</h1><span class="sub">every piece of the observatory, on a turntable</span>
+  <nav><a class="btn" href="index.html">◂ Hub</a><a class="btn" href="plan.html">⌗ Floor plan</a><a class="btn" href="scene.html?p=100">★ Room</a></nav>
+</header>
+<div id="list" role="group" aria-label="Models"></div>
+<div id="viewer">
+  <canvas id="gl" aria-label="3D model viewer"></canvas>
+  <div id="overlay"><h2 id="name">—</h2><p id="blurb"></p></div>
+  <div id="spinner">loading…</div>
+  <div id="tools">
+    <button class="btn" id="spin" aria-pressed="true">⟳ Turntable</button>
+    <button class="btn" id="wire" aria-pressed="false">▦ Wireframe</button>
+    <button class="btn" id="reset">⌖ Reset view</button>
+  </div>
+  <div id="info">
+    <div id="topview"><span style="opacity:.4">—</span></div>
+    <dl id="stats"></dl>
+    <div id="actions"><a class="btn" id="inplan" href="plan.html">⌗ Edit in plan</a><a class="btn" id="dl" href="#" download>⬇ .glb</a></div>
+  </div>
+</div>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ITEMS } from './models/layout.js';
+
+// every GLB in models/ — the ones in layout.js get their plan data; the rest are set pieces
+const NOTES = {
+  desk:'The writing desk at the back wall. Table-mounted props sit on its measured top.',
+  terminal:'The swivelling terminal — flagged spin, so it turns back and forth in the room.',
+  books:'A stack of field notes on the desk.',
+  signalscope:'The handheld Signalscope whose lens frames the opening shot.',
+  lamp:'Oil lamp beside the desk; the warm point light in the scene sits near it.',
+  clock:'Mantel clock on the floor by the desk.',
+  telescope:'The brass refractor on its tripod, angled toward the dome.',
+  globe:'Celestial globe in its armillary cage.',
+  lizard:'The host — hero of the room. Bobs gently once you arrive.',
+  dome:'The observatory dome shell. The intro currently uses a coded dome; this is the modelled version.',
+  tunnelA:'Shaft segment A. The Tripo pieces don\'t tile cleanly, so the descent uses a coded copper tube for now.',
+  tunnelB:'Shaft segment B — the flanged variant.',
+};
+const FILES=['desk','terminal','books','signalscope','lamp','clock','telescope','globe','lizard','dome','tunnelA','tunnelB'];
+const byModel=Object.fromEntries(ITEMS.map(it=>[it.model.replace(/\.glb$/,''),it]));
+const ENTRIES=FILES.map(f=>({file:f, item:byModel[f], id:byModel[f]?.id||f}));
+
+const $=id=>document.getElementById(id);
+const list=$('list'), canvas=$('gl');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio)); renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x07070d);
+scene.fog=new THREE.Fog(0x07070d,700,1400);
+const cam=new THREE.PerspectiveCamera(35,1,1,4000);
+const controls=new OrbitControls(cam,canvas); controls.enableDamping=true; controls.autoRotate=true; controls.autoRotateSpeed=1.6;
+scene.add(new THREE.HemisphereLight(0x9fb6d8,0x241a10,1.2));
+const key=new THREE.DirectionalLight(0xffe6c0,2.6); key.position.set(300,500,400); scene.add(key);
+const rim=new THREE.DirectionalLight(0x8fb6ff,1.4); rim.position.set(-400,200,-300); scene.add(rim);
+// brass plinth + compass-ish rings, matching the room
+const plinth=new THREE.Mesh(new THREE.CylinderGeometry(160,170,14,64),new THREE.MeshStandardMaterial({color:0x2a1a0c,metalness:.6,roughness:.7}));
+plinth.position.y=-7; scene.add(plinth);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(164,3,8,96),new THREE.MeshStandardMaterial({color:0xe9c082,metalness:1,roughness:.25}));
+ring.rotation.x=Math.PI/2; ring.position.y=0.5; scene.add(ring);
+const grid=new THREE.PolarGridHelper(600,16,8,64,0x2a2014,0x1a140c); grid.position.y=-14; scene.add(grid);
+
+function size(){ const r=canvas.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); cam.aspect=r.width/Math.max(1,r.height); cam.updateProjectionMatrix(); }
+new ResizeObserver(size).observe(canvas);
+
+const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const cache=new Map();
+async function load(file){
+  if(cache.has(file)) return cache.get(file);
+  const p=(async()=>{
+    const buf=await (await fetch(`models/${file}.glb`)).arrayBuffer();
+    const gltf=await new Promise((res,rej)=>loader.parse(buf,'',res,rej));
+    return {gltf,bytes:buf.byteLength};
+  })();
+  cache.set(file,p); return p;
+}
+function stats(obj){
+  let tris=0,verts=0,meshes=0; const mats=new Set(), tex=new Set();
+  obj.traverse(o=>{ if(!o.isMesh) return; meshes++; const g=o.geometry;
+    verts+=g.attributes.position.count; tris+=(g.index?g.index.count:g.attributes.position.count)/3;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ mats.add(m); for(const k of ['map','normalMap','roughnessMap','metalnessMap','emissiveMap']) if(m[k]) tex.add(m[k]); }); });
+  return {tris:Math.round(tris),verts,meshes,mats:mats.size,tex:tex.size};
+}
+
+let current=null, wire=false, token=0;
+const TARGET=220;                                      // turntable display height
+async function show(entry){
+  const my=++token;
+  [...list.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.file===entry.file));
+  $('name').textContent=entry.id; $('blurb').textContent=NOTES[entry.file]||''; $('spinner').style.display='grid';
+  history.replaceState(null,'',`?m=${entry.id}`);
+  const {gltf,bytes}=await load(entry.file);
+  if(my!==token) return;
+  if(current) scene.remove(current);
+  const obj=gltf.scene.clone(true);
+  obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.side=THREE.DoubleSide; o.material.wireframe=wire; } });
+  const b0=new THREE.Box3().setFromObject(obj), s0=new THREE.Vector3(); b0.getSize(s0);
+  const tall=entry.item?entry.item.h:TARGET;          // show items at their room height
+  const f=TARGET/Math.max(s0.x,s0.y,s0.z,1e-3); obj.scale.setScalar(f);
+  obj.updateMatrixWorld(true);
+  const b=new THREE.Box3().setFromObject(obj), c=new THREE.Vector3(); b.getCenter(c);
+  obj.position.x-=c.x; obj.position.z-=c.z; obj.position.y-=b.min.y;
+  scene.add(obj); current=obj;
+  frame(b);
+  $('spinner').style.display='none';
+  const st=stats(obj), it=entry.item, ratio=s0.y?tall/s0.y:1;
+  const rows=[
+    ['File',`${entry.file}.glb`],['Size',`${(bytes/1024).toFixed(0)} KB`],
+    ['Triangles',st.tris.toLocaleString()],['Vertices',st.verts.toLocaleString()],
+    ['Meshes · mats',`${st.meshes} · ${st.mats}`],['Textures',st.tex],
+    ['Room size (W×H×D)',`${(s0.x*ratio)|0} × ${(s0.y*ratio)|0} × ${(s0.z*ratio)|0}`],
+  ];
+  if(it) rows.push(['Mount',it.on],['Plan x, z',`${it.x}, ${it.z}`],['Rotation',`${it.rot}°`],['Footprint',`${it.foot[0]} × ${it.foot[1]}`]);
+  else rows.push(['In layout','not placed — set piece']);
+  if(it?.spin) rows.push(['Flags','spin']); if(it?.hero) rows.push(['Flags','hero']);
+  $('stats').innerHTML=rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const tv=$('topview'); tv.innerHTML=''; const thumb=thumbs.get(entry.file);
+  if(thumb){ const i=new Image(); i.src=thumb; i.alt=`${entry.id} seen from above`; tv.appendChild(i); } else tv.innerHTML='<span style="opacity:.4">—</span>';
+  $('inplan').href=it?`plan.html?sel=${it.id}`:'plan.html'; $('inplan').style.display=it?'':'none';
+  $('dl').href=`models/${entry.file}.glb`;
+}
+function frame(b){
+  const s=new THREE.Vector3(); b.getSize(s); const r=Math.max(s.x,s.y,s.z);
+  const d=r/(2*Math.tan(cam.fov*Math.PI/360))*1.35;
+  controls.target.set(0,s.y/2,0); cam.position.set(d*0.75,s.y*0.6+d*0.25,d*0.75); controls.update();
+}
+const thumbs=new Map();
+ENTRIES.forEach(e=>{ if(e.item?.sprite) thumbs.set(e.file,e.item.sprite); });
+
+// tiles
+ENTRIES.forEach(e=>{
+  const b=document.createElement('button'); b.className='tile'; b.dataset.file=e.file; b.setAttribute('aria-pressed','false');
+  const th=document.createElement('div'); th.className='thumb';
+  if(thumbs.has(e.file)){ const i=new Image(); i.src=thumbs.get(e.file); i.alt=''; th.appendChild(i); } else th.innerHTML='<span>◌</span>';
+  b.append(th);
+  b.insertAdjacentHTML('beforeend',`<b>${e.id}</b><small>${e.item?e.item.on:'set piece'}</small>`);
+  b.onclick=()=>show(e); list.appendChild(b);
+});
+
+// set pieces have no top sprite → render a 3/4 thumbnail with a small offscreen renderer
+async function renderThumbs(){
+  const R=new THREE.WebGLRenderer({antialias:true,alpha:true}); R.setSize(192,192); R.setClearColor(0,0); R.outputColorSpace=THREE.SRGBColorSpace;
+  const sc=new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff,0x553322,2)); const l=new THREE.DirectionalLight(0xffffff,2); l.position.set(3,5,4); sc.add(l);
+  const c=new THREE.PerspectiveCamera(30,1,0.01,100);
+  for(const e of ENTRIES.filter(e=>!thumbs.has(e.file))){
+    const {gltf}=await load(e.file); const o=gltf.scene.clone(true);
+    const b=new THREE.Box3().setFromObject(o), s=new THREE.Vector3(), ctr=new THREE.Vector3(); b.getSize(s); b.getCenter(ctr);
+    o.position.sub(ctr); o.scale.setScalar(1/Math.max(s.x,s.y,s.z)); o.position.multiplyScalar(1/Math.max(s.x,s.y,s.z));
+    sc.add(o); c.position.set(1.4,1.1,1.6); c.lookAt(0,0,0); R.render(sc,c); sc.remove(o);
+    const url=R.domElement.toDataURL('image/png'); thumbs.set(e.file,url);
+    const th=list.querySelector(`[data-file="${e.file}"] .thumb`); th.innerHTML=''; const i=new Image(); i.src=url; i.alt=''; th.appendChild(i);
+  }
+  R.dispose();
+}
+
+$('spin').onclick=e=>{ controls.autoRotate=!controls.autoRotate; e.currentTarget.setAttribute('aria-pressed',controls.autoRotate); };
+$('wire').onclick=e=>{ wire=!wire; e.currentTarget.setAttribute('aria-pressed',wire); current?.traverse(o=>{ if(o.isMesh) o.material.wireframe=wire; }); };
+$('reset').onclick=()=>{ if(current) frame(new THREE.Box3().setFromObject(current)); };
+addEventListener('keydown',e=>{
+  if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return;
+  const i=ENTRIES.findIndex(x=>x.file===list.querySelector('[aria-pressed=true]')?.dataset.file);
+  show(ENTRIES[(i+(e.key==='ArrowRight'?1:-1)+ENTRIES.length)%ENTRIES.length]);
+});
+
+const want=new URLSearchParams(location.search).get('m');
+size();
+show(ENTRIES.find(e=>e.id===want||e.file===want)||ENTRIES.find(e=>e.file==='lizard')).then(renderThumbs);
+(function loop(){ controls.update(); renderer.render(scene,cam); requestAnimationFrame(loop); })();
+window.CABINET={show:id=>show(ENTRIES.find(e=>e.id===id||e.file===id)),scene};
+</script>
+</body></html>

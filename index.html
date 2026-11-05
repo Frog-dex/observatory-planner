@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Observatory Planner</title>
+<meta name="description" content="Plan the Spirit Strikers observatory from above, then fly into it in 3D.">
+<link rel="icon" href="models/top/telescope.png">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#05070f;--ink:#e8dcc0;--dim:#9a8a68;--gold:#f0dca0;--brass:#caa86a;--cyan:#7fdfff;--line:#3a2a16;--card:rgba(14,11,20,.78)}
+html{background:var(--bg)}
+body{margin:0;color:var(--ink);font-family:'Playfair Display',Georgia,serif;min-height:100vh;overflow-x:hidden;
+  background:radial-gradient(1200px 700px at 50% -10%,#1b1630 0%,transparent 60%),radial-gradient(900px 600px at 90% 110%,#2a1a0c 0%,transparent 60%),var(--bg)}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+main{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:56px 16px 64px}
+header{text-align:center;margin-bottom:40px}
+.eyebrow{font-size:12px;letter-spacing:.5em;text-transform:uppercase;color:#9fb6d8}
+h1{margin:10px 0 8px;font-size:clamp(34px,7vw,68px);font-weight:800;letter-spacing:3px;color:var(--gold);text-shadow:0 0 26px rgba(202,168,106,.55),0 2px 4px #000}
+.lede{max-width:640px;margin:0 auto;color:#c9bb98;font-size:clamp(15px,2.2vw,18px);line-height:1.6}
+.cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.btn{font:inherit;font-size:14px;letter-spacing:.12em;text-decoration:none;color:var(--brass);border:1px solid #6a4f2c;border-radius:10px;padding:11px 18px;background:rgba(8,7,15,.72)}
+.btn.primary{color:#1a1206;background:linear-gradient(#f0dca0,#c9863f);border-color:#e9c082;font-weight:700}
+.btn:hover{border-color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{position:relative;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:18px;overflow:hidden;transition:transform .2s,border-color .2s;backdrop-filter:blur(4px)}
+.card:hover{transform:translateY(-3px);border-color:var(--brass)}
+.card .art{height:150px;border-radius:10px;background:#08131f;display:grid;place-items:center;position:relative;overflow:hidden;border:1px solid #17384f}
+.card h2{margin:6px 0 0;font-size:20px;color:var(--gold);letter-spacing:.06em}
+.card p{margin:0;color:#b8aa88;font-size:14px;line-height:1.55}
+.card .go{margin-top:auto;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass)}
+.mini{width:100%;height:100%}
+.art.room{background:radial-gradient(circle at 50% 40%,#2a1a0c,#05070f 70%)}
+.art.room img{position:absolute;filter:drop-shadow(0 6px 10px #000)}
+.art.scope{background:#03020a}
+.art.scope .ring{width:120px;height:120px;border-radius:50%;border:9px solid #b9772f;box-shadow:0 0 0 2px #f0dca055 inset,0 0 30px #c9863f55;
+  background:radial-gradient(circle,#0b1430,#03040c 70%);position:relative}
+.art.scope .ring::before,.art.scope .ring::after{content:'';position:absolute;background:#cdeaf055;left:50%;top:10%;width:1px;height:80%}
+.art.scope .ring::after{transform:rotate(90deg)}
+.art.cabinet{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px;background:#0a0d16}
+.art.cabinet img{width:100%;height:100%;object-fit:contain;background:#101624;border-radius:6px;padding:4px}
+section.flow{margin-top:48px;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+section.flow h3{margin:0 0 14px;color:var(--gold);letter-spacing:.08em;font-size:20px}
+ol.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;counter-reset:s}
+ol.steps li{counter-increment:s;padding:14px;border-radius:10px;background:#0b0912;border:1px solid #2a2014;font-size:14px;line-height:1.55;color:#c9bb98}
+ol.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;margin-right:8px;
+  background:linear-gradient(#f0dca0,#c9863f);color:#1a1206;font-weight:800;font-size:13px}
+ol.steps b{color:var(--gold)}
+code{font-family:'Courier New',monospace;font-size:.92em;color:#8fd6a8}
+footer{margin-top:40px;text-align:center;color:var(--dim);font-size:13px;letter-spacing:.06em}
+footer a{color:var(--brass)}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style></head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<main>
+  <header>
+    <div class="eyebrow">Spirit Strikers · look to the stars</div>
+    <h1>Observatory Planner</h1>
+    <p class="lede">Arrange the Victorian observatory from above like furniture on graph paper — then fall from the stars, down the copper shaft, and stand in the room you just drew.</p>
+    <div class="cta">
+      <a class="btn primary" href="plan.html">⌗ Open the floor plan</a>
+      <a class="btn" href="scene.html?auto=1">★ Fly in</a>
+    </div>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="plan.html">
+      <div class="art" id="planArt"><svg class="mini" id="miniPlan" aria-hidden="true"></svg></div>
+      <h2>Floor Plan</h2>
+      <p>Drag real top-view sprites, aim the camera, check for collisions, and export the exact <code>layout.js</code>.</p>
+      <span class="go">Plan the room →</span>
+    </a>
+    <a class="card" href="scene.html">
+      <div class="art room">
+        <img src="models/top/lizard.png" alt="" style="width:92px;left:58%;top:30%">
+        <img src="models/top/desk.png" alt="" style="width:46px;left:38%;top:12%">
+        <img src="models/top/globe.png" alt="" style="width:50px;left:74%;top:16%">
+        <img src="models/top/telescope.png" alt="" style="width:40px;left:14%;top:26%;transform:rotate(30deg)">
+      </div>
+      <h2>The Room in 3D</h2>
+      <p>Every low-poly model placed straight from the plan. Scroll, swipe or press ↓ to descend; free-look once you land.</p>
+      <span class="go">Enter the observatory →</span>
+    </a>
+    <a class="card" href="models.html">
+      <div class="art cabinet" id="cabArt"></div>
+      <h2>Model Cabinet</h2>
+      <p>Spin every model on a turntable — size, triangles, materials and where it sits in the plan, side by side with its top view.</p>
+      <span class="go">Browse the models →</span>
+    </a>
+    <a class="card" href="intro.html">
+      <div class="art scope"><div class="ring"></div></div>
+      <h2>Original Intro</h2>
+      <p>The first one-take cut: Signalscope → dome iris → shaft → room, with the coded desk and swivelling CRT.</p>
+      <span class="go">Watch the pan →</span>
+    </a>
+  </div>
+
+  <section class="flow" aria-labelledby="flowh">
+    <h3 id="flowh">How the loop works</h3>
+    <ol class="steps">
+      <li><b>Plan.</b> Drag objects in <code>plan.html</code>. Edits autosave as a draft in your browser.</li>
+      <li><b>Preview.</b> Hit <em>Preview in 3D</em> — <code>scene.html?draft=1</code> builds the room from the draft.</li>
+      <li><b>Commit.</b> Copy or download <code>layout.js</code> into <code>models/</code>. That file is the single source of truth.</li>
+      <li><b>Hand it off.</b> The format is flat and readable, so people <em>and</em> AI models can rearrange the room without touching 3D code.</li>
+    </ol>
+  </section>
+
+  <footer>Built for <a href="https://spiritstriker.app">spiritstriker.app</a> · sibling tool: <em>site-blueprint</em></footer>
+</main>
+<script type="module">
+import { ROOM, ITEMS } from './models/layout.js';
+// mini floor plan on the planner card, drawn from the real layout
+const svg=document.getElementById('miniPlan'), NS='http://www.w3.org/2000/svg';
+const P=40; svg.setAttribute('viewBox',`${ROOM.minX-P} ${ROOM.minZ-P} ${ROOM.maxX-ROOM.minX+2*P} ${ROOM.maxZ-ROOM.minZ+2*P}`);
+const add=(t,a,p=svg)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); p.appendChild(e); return e; };
+for(let x=ROOM.minX+100;x<ROOM.maxX;x+=200) add('line',{x1:x,y1:ROOM.minZ,x2:x,y2:ROOM.maxZ,stroke:'#102a3d','stroke-width':4});
+for(let z=ROOM.minZ+100;z<ROOM.maxZ;z+=200) add('line',{x1:ROOM.minX,y1:z,x2:ROOM.maxX,y2:z,stroke:'#102a3d','stroke-width':4});
+add('rect',{x:ROOM.minX,y:ROOM.minZ,width:ROOM.maxX-ROOM.minX,height:ROOM.maxZ-ROOM.minZ,fill:'none',stroke:'#7fdfff','stroke-width':12});
+add('polygon',{points:`${ROOM.camX},${ROOM.camZ} ${ROOM.minX*0.92},${ROOM.minZ} ${ROOM.maxX*0.92},${ROOM.minZ}`,fill:'#f0dca0','fill-opacity':0.06});
+[...ITEMS].sort((a,b)=>(a.on==='table')-(b.on==='table')).forEach(it=>{
+  const g=add('g',{transform:`translate(${it.x},${it.z}) rotate(${it.rot})`});
+  add('image',{href:it.sprite,x:-it.foot[0]/2,y:-it.foot[1]/2,width:it.foot[0],height:it.foot[1],preserveAspectRatio:'none'},g);
+});
+add('circle',{cx:ROOM.camX,cy:ROOM.camZ,r:26,fill:'#f0dca0'});
+// cabinet card collage
+const cab=document.getElementById('cabArt');
+['telescope','globe','lizard','monitor','signalscope','clock'].forEach(id=>{ const i=new Image(); i.src=`models/top/${id}.png`; i.alt=''; cab.appendChild(i); });
+// twinkling star field (respects reduced motion)
+const c=document.getElementById('stars'), g=c.getContext('2d'); let S=[];
+function size(){ c.width=innerWidth*devicePixelRatio; c.height=innerHeight*devicePixelRatio;
+  S=Array.from({length:Math.round(innerWidth*innerHeight/5000)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.4*devicePixelRatio+.3,p:Math.random()*6})); }
+addEventListener('resize',size); size();
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tick(t){ g.clearRect(0,0,c.width,c.height);
+  for(const s of S){ g.globalAlpha=still?.7:.35+.45*Math.abs(Math.sin(t/1400+s.p)); g.fillStyle='#dfe7ff'; g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.fill(); }
+  if(!still) requestAnimationFrame(tick); }
+requestAnimationFrame(tick);
+</script>
+</body></html>
