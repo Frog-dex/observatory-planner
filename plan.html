@@ -1,56 +1,117 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Observatory — Floor Plan</title>
+<meta name="description" content="Top-down floor-plan editor for the Spirit Strikers observatory. Drag real model sprites, then export layout.js.">
+<link rel="icon" href="models/top/telescope.png">
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#08131f;color:#bfe6ff;font-family:'Courier New',ui-monospace,monospace;overflow:hidden}
+:root{--bg:#08131f;--panel:#0c1a29;--line:#17384f;--ink:#bfe6ff;--cyan:#7fdfff;--dim:#5f8ba6;--soft:#7fb0c8;--gold:#f0dca0;--ok:#8fd6a8;--warn:#ffb060;--bad:#ff7f6a}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Courier New',ui-monospace,monospace;overflow:hidden}
 #wrap{display:flex;height:100%}
-#stage{flex:1;position:relative}
+#stage{flex:1;position:relative;min-height:0}
 #plan{width:100%;height:100%;display:block;touch-action:none}
-#stage.dropping::after{content:'⬇ drop .glb to add it to the plan';position:absolute;inset:12px;border:3px dashed #7fdfff;border-radius:14px;
-  display:grid;place-items:center;font-size:20px;color:#7fdfff;background:rgba(8,19,31,.72);pointer-events:none}
-#panel{width:312px;background:#0c1a29;border-left:1px solid #17384f;padding:14px 16px;display:flex;flex-direction:column;gap:9px;overflow:auto}
-h1{font-size:15px;letter-spacing:.16em;color:#7fdfff;margin:0 0 2px;text-transform:uppercase}
-.sub{font-size:11px;color:#5f8ba6;margin:0 0 6px;letter-spacing:.04em}
-.sel{font-size:13px;color:#f0dca0;letter-spacing:.1em}
-label{font-size:11px;color:#7fb0c8;display:block;margin:7px 0 2px;letter-spacing:.06em}
-input[type=range]{width:100%;accent-color:#7fdfff}
-input[type=number],select{width:100%;background:#08131f;color:#bfe6ff;border:1px solid #1d4763;border-radius:5px;padding:5px 7px;font-family:inherit;font-size:12px}
+#stage.dropping::after{content:'⬇ drop .glb to add it to the plan';position:absolute;inset:12px;border:3px dashed var(--cyan);border-radius:14px;
+  display:grid;place-items:center;font-size:20px;color:var(--cyan);background:rgba(8,19,31,.72);pointer-events:none}
+#topbar{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:2}
+#topbar a,#topbar button{margin:0;background:rgba(12,26,41,.86);backdrop-filter:blur(3px);text-decoration:none}
+#status{position:absolute;left:12px;bottom:12px;font-size:11px;color:var(--dim);letter-spacing:.06em;z-index:2;pointer-events:none;
+  background:rgba(8,19,31,.7);padding:4px 8px;border-radius:5px}
+#status b{color:var(--ok);font-weight:normal}
+#status.dirty b{color:var(--warn)}
+#panel{width:330px;background:var(--panel);border-left:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:9px;overflow:auto}
+h1{font-size:15px;letter-spacing:.16em;color:var(--cyan);margin:0 0 2px;text-transform:uppercase}
+h2{font-size:11px;letter-spacing:.18em;color:var(--soft);margin:8px 0 0;text-transform:uppercase;font-weight:normal;border-top:1px solid var(--line);padding-top:10px}
+.sub{font-size:11px;color:var(--dim);margin:0 0 6px;letter-spacing:.04em}
+.sel{font-size:13px;color:var(--gold);letter-spacing:.1em}
+label{font-size:11px;color:var(--soft);display:block;margin:7px 0 2px;letter-spacing:.06em}
+input[type=range]{width:100%;accent-color:var(--cyan)}
+input[type=number],select{width:100%;background:var(--bg);color:var(--ink);border:1px solid #1d4763;border-radius:5px;padding:5px 7px;font-family:inherit;font-size:12px}
 .row{display:flex;gap:8px}.row>div{flex:1}
-button{background:#12314a;color:#bfe6ff;border:1px solid #2b6a92;border-radius:6px;padding:8px 10px;font-family:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;margin-top:6px}
-button:hover{background:#184260}
+.btns{display:flex;flex-wrap:wrap;gap:6px}.btns button{margin:0;flex:1 1 auto}
+button,.btn{background:#12314a;color:var(--ink);border:1px solid #2b6a92;border-radius:6px;padding:8px 10px;font-family:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;margin-top:6px;display:inline-block}
+button:hover,.btn:hover{background:#184260}
+button:disabled{opacity:.4;cursor:default}
 button.primary{background:#134b39;border-color:#2f8a63;color:#a8f5cf}
-textarea{width:100%;height:110px;background:#050d16;color:#8fd6a8;border:1px solid #1d4763;border-radius:6px;font-family:inherit;font-size:10px;padding:8px;resize:vertical}
-.hint{font-size:10.5px;color:#5f8ba6;line-height:1.5}
-.key{font-size:10.5px;color:#7fb0c8}
+button.gold{background:#3a2c12;border-color:#8a6a2c;color:var(--gold)}
+textarea{width:100%;height:120px;background:#050d16;color:var(--ok);border:1px solid #1d4763;border-radius:6px;font-family:inherit;font-size:10px;padding:8px;resize:vertical}
+.hint{font-size:10.5px;color:var(--dim);line-height:1.55}
+.hint kbd{border:1px solid #2b6a92;border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink);font-family:inherit;font-size:10px}
+.key{font-size:10.5px;color:var(--soft)}
 .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 8px;vertical-align:middle}
 #file{display:none}
-.dims{font-size:11px;color:#8fd6a8}
+.dims{font-size:11px;color:var(--ok)}
+#chips{display:flex;flex-wrap:wrap;gap:5px}
+#chips button{margin:0;padding:4px 7px;font-size:11px;display:flex;align-items:center;gap:5px}
+#chips button img{width:18px;height:18px;object-fit:contain}
+#chips button.on{border-color:var(--gold);color:var(--gold)}
+#chips button.warn{border-color:var(--bad)}
+#checks{font-size:11px;line-height:1.6;margin:0;padding-left:16px}
+#checks li.ok{color:var(--ok);list-style:'✓  '}
+#checks li.w{color:var(--warn);list-style:'⚠  ';cursor:pointer}
+@media (max-width:820px){
+  html,body{overflow:auto;height:auto}
+  #wrap{flex-direction:column;height:auto}
+  #stage{height:62vh;flex:none}
+  #panel{width:auto;border-left:0;border-top:1px solid var(--line);overflow:visible}
+  #topbar{left:8px;top:8px}
+  #topbar a,#topbar button{padding:6px 8px;font-size:11px}
+}
 </style></head>
 <body>
 <div id="wrap">
-  <div id="stage"><svg id="plan"></svg></div>
+  <div id="stage">
+    <svg id="plan" role="img" aria-label="Top-down floor plan of the observatory"></svg>
+    <div id="topbar">
+      <a class="btn" href="index.html" title="Back to the hub">◂ Hub</a>
+      <button id="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button id="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      <button id="snapbtn" title="Toggle 5-unit grid snap (G)">⌗ Snap 5</button>
+      <button class="gold" id="preview" title="Open the 3D room with this draft">▶ Preview in 3D</button>
+    </div>
+    <div id="status"><b>●</b> <span id="statusTxt">layout.js</span></div>
+  </div>
   <div id="panel">
     <div><h1>Observatory · Floor Plan</h1><p class="sub">top-down · real model sprites · drag ◉ camera</p></div>
+    <div id="chips" aria-label="Objects"></div>
     <button id="addbtn">➕ Add model (.glb) — auto top-view</button>
     <input id="file" type="file" accept=".glb">
     <div class="sel" id="selName">— nothing selected —</div>
     <div id="controls" style="display:none">
-      <div class="row"><div><label>X</label><input type="number" id="cx" step="5"></div><div><label>Z (depth)</label><input type="number" id="cz" step="5"></div></div>
+      <div class="row"><div><label for="cx">X</label><input type="number" id="cx" step="5"></div><div><label for="cz">Z (depth)</label><input type="number" id="cz" step="5"></div></div>
+      <div id="camOnly">
+        <div class="row"><div><label for="ccy">Eye height (Y)</label><input type="number" id="ccy" step="2"></div><div><label for="clz">Gaze Z</label><input type="number" id="clz" step="10"></div></div>
+        <div class="hint">The camera is where the intro flight comes to rest. The dashed gold line is the gaze.</div>
+      </div>
       <div id="itemOnly">
-        <label>Rotation — <span id="rotVal">0</span>°</label>
-        <input type="range" id="crot" min="0" max="359" step="5">
-        <div class="row"><div><label>Height</label><input type="number" id="ch" step="5"></div><div><label>Mount on</label>
+        <label for="crot">Rotation — <span id="rotVal">0</span>°</label>
+        <input type="range" id="crot" min="-180" max="180" step="5">
+        <div class="row"><div><label for="ch">Height</label><input type="number" id="ch" step="5" min="5"></div><div><label for="con">Mount on</label>
           <select id="con"><option value="floor">Floor</option><option value="table">Table top</option><option value="ceiling">Ceiling</option></select></div></div>
         <div class="dims" id="dims"></div>
-        <label style="margin-top:6px"><input type="checkbox" id="cspin" style="width:auto;accent-color:#7fdfff"> spin (rotating TV)</label>
-        <div class="row"><div><button id="dlsprite" style="display:none">⬇ Save sprite PNG</button></div><div><button id="delitem">🗑 Remove</button></div></div>
+        <label style="margin-top:6px"><input type="checkbox" id="cspin" style="width:auto;accent-color:var(--cyan)"> spin (rotating TV)</label>
+        <div class="btns">
+          <button id="dupitem" title="Duplicate (D)">⧉ Duplicate</button>
+          <button id="delitem" title="Remove (Delete)">🗑 Remove</button>
+          <button id="dlsprite" style="display:none">⬇ Save sprite PNG</button>
+        </div>
       </div>
     </div>
     <div class="key"><span class="sw" style="background:#7fdfff"></span>floor<span class="sw" style="background:#8fe6b0"></span>table<span class="sw" style="background:#c9a0ff"></span>ceiling<span class="sw" style="background:#ffb060"></span>spin<span class="sw" style="background:#ff7f6a"></span>hero
       <div style="margin-top:4px">opacity = height: floor solid · higher = faded + border</div></div>
-    <button class="primary" id="copy">⧉ Copy layout code</button>
-    <div class="hint">Drag objects to place. Drop a <b>.glb</b> anywhere to add it — it gets auto-oriented, screenshotted from the top, measured, and placed at true scale. The code below is the exact <b>layout.js</b>.</div>
-    <textarea id="out" spellcheck="false"></textarea>
+
+    <h2>Checks</h2>
+    <ul id="checks"></ul>
+
+    <h2>Export</h2>
+    <div class="btns">
+      <button class="primary" id="copy">⧉ Copy layout.js</button>
+      <button id="download">⬇ Download</button>
+      <button id="revert" title="Discard the draft and reload models/layout.js">⟲ Revert to file</button>
+    </div>
+    <div class="hint">Your edits autosave as a <b>draft</b> in this browser. <b>Preview in 3D</b> opens the room with the draft — no copy-paste.
+      When it looks right, copy or download the code below; it is the complete <b>models/layout.js</b>.</div>
+    <textarea id="out" spellcheck="false" aria-label="layout.js code" readonly></textarea>
+    <div class="hint">Drag objects to place. Drop a <b>.glb</b> anywhere to add it — it gets auto-oriented, screenshotted from the top, measured, and placed at true scale.<br>
+      <kbd>←↑→↓</kbd> nudge (<kbd>Shift</kbd> ×5) · <kbd>Q</kbd>/<kbd>E</kbd> rotate 15° · <kbd>D</kbd> duplicate · <kbd>Del</kbd> remove · <kbd>Esc</kbd> deselect · <kbd>Ctrl Z</kbd> undo</div>
   </div>
 </div>
 <script type="importmap">{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/jsm/" } }</script>
@@ -58,12 +119,18 @@ textarea{width:100%;height:110px;background:#050d16;color:#8fd6a8;border:1px sol
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { ROOM, ITEMS } from './models/layout.js';
+import { fileLayout, activeLayout, writeDraft, clearDraft, toLayoutJs } from './js/layout-store.js';
+
 const SVG='http://www.w3.org/2000/svg';
 const svg=document.getElementById('plan');
-const items=ITEMS.map(o=>Object.assign({baseH:o.h, baseFoot:[...o.foot]},o));
-const room=Object.assign({},ROOM);
-let sel=null;
+const FILE=fileLayout();
+const START=activeLayout({preferDraft:true});
+const ROOM=FILE.ROOM;                               // room walls come from the file; camera fields are editable
+let room=Object.assign({},START.ROOM);
+let items=START.ITEMS.map(withBase);
+let sel=null, snap=5;
+function withBase(o){ return Object.assign({},o,{baseH:o.baseH||o.h, baseFoot:o.baseFoot||[...o.foot]}); }
+
 const MOUNTCOL={floor:'#7fdfff',table:'#8fe6b0',ceiling:'#c9a0ff'};
 // HEIGHT → OPACITY (continuous): the higher an object sits, the more see-through it gets — but a border appears so it stays visible.
 const ELEV={floor:0,table:150,ceiling:360};
@@ -82,102 +149,216 @@ for(let gx=Math.ceil(ROOM.minX/100)*100; gx<=ROOM.maxX; gx+=100) el('line',{x1:g
 for(let gz=Math.ceil(ROOM.minZ/100)*100; gz<=ROOM.maxZ; gz+=100) el('line',{x1:ROOM.minX,y1:gz,x2:ROOM.maxX,y2:gz,stroke:gz===0?'#1d4763':'#102a3d','stroke-width':gz===0?2:1},bg);
 el('rect',{x:ROOM.minX,y:ROOM.minZ,width:ROOM.maxX-ROOM.minX,height:ROOM.maxZ-ROOM.minZ,fill:'none',stroke:'#7fdfff','stroke-width':5},bg);
 el('text',{x:0,y:ROOM.minZ-34,fill:'#4f7f98','font-size':26,'text-anchor':'middle','letter-spacing':4},bg).textContent='BACK WALL';
+el('text',{x:0,y:ROOM.maxZ+56,fill:'#33566b','font-size':22,'text-anchor':'middle','letter-spacing':4},bg).textContent='FRONT · VIEWER SIDE';
+// compass inlay + ceiling hatch (where the shaft drops in) — matches scene.html
 el('circle',{cx:0,cy:-120,r:70,fill:'none',stroke:'#284a3c','stroke-width':2},bg);
 el('circle',{cx:0,cy:-120,r:30,fill:'none',stroke:'#284a3c','stroke-width':2},bg);
+el('circle',{cx:0,cy:40,r:170,fill:'none',stroke:'#3a3a5a','stroke-width':2,'stroke-dasharray':'6 10'},bg);
+el('text',{x:0,y:40+170+24,fill:'#3f4a6a','font-size':16,'text-anchor':'middle','letter-spacing':3},bg).textContent='CEILING HATCH';
+
+// ---- geometry helpers (rotated footprint → axis-aligned box in plan space) ----
+function aabb(it){ const a=(it.rot||0)*Math.PI/180, c=Math.abs(Math.cos(a)), s=Math.abs(Math.sin(a));
+  const hw=(it.foot[0]*c+it.foot[1]*s)/2, hd=(it.foot[0]*s+it.foot[1]*c)/2;
+  return {x0:it.x-hw,x1:it.x+hw,z0:it.z-hd,z1:it.z+hd}; }
+const overlap=(a,b)=>a.x0<b.x1&&a.x1>b.x0&&a.z0<b.z1&&a.z1>b.z0;
+const inside=(a,b)=>a.x0>=b.x0-2&&a.x1<=b.x1+2&&a.z0>=b.z0-2&&a.z1<=b.z1+2;
+
+function runChecks(){
+  const issues=[], bad=new Set(), R={x0:ROOM.minX,x1:ROOM.maxX,z0:ROOM.minZ,z1:ROOM.maxZ};
+  const desk=items.find(o=>o.id==='desk'), deskBox=desk&&aabb(desk);
+  items.forEach(it=>{
+    const b=aabb(it);
+    if(!inside(b,R)){ issues.push([it.id,`${it.id} pokes through a wall`]); bad.add(it.id); }
+    if(it.on==='table'){
+      if(!deskBox) issues.push([it.id,`${it.id} is on "table" but there is no desk`]);
+      else if(!overlap(b,deskBox)){ issues.push([it.id,`${it.id} is mounted on the table but sits off the desk`]); bad.add(it.id); }
+    }
+  });
+  const floor=items.filter(o=>o.on==='floor'&&o.id!=='desk');
+  for(let i=0;i<floor.length;i++) for(let j=i+1;j<floor.length;j++)
+    if(overlap(aabb(floor[i]),aabb(floor[j]))){ issues.push([floor[i].id,`${floor[i].id} overlaps ${floor[j].id}`]); bad.add(floor[i].id); bad.add(floor[j].id); }
+  if(deskBox) items.filter(o=>o.on==='floor'&&o.id!=='desk').forEach(o=>{ if(overlap(aabb(o),deskBox)){ issues.push([o.id,`${o.id} (floor) collides with the desk`]); bad.add(o.id); } });
+  if(room.camX<ROOM.minX||room.camX>ROOM.maxX||room.camZ<ROOM.minZ||room.camZ>ROOM.maxZ) issues.push(['__cam','camera is outside the room']);
+  if(room.camLookZ>=room.camZ) issues.push(['__cam','camera gaze points away from the back wall']);
+  const ids=new Set(); items.forEach(o=>{ if(ids.has(o.id)) issues.push([o.id,`duplicate id "${o.id}"`]); ids.add(o.id); });
+  return {issues,bad};
+}
 
 // ---- items + camera ----
 const layer=el('g',{});
+let lastChecks={issues:[],bad:new Set()};
 function draw(){
   layer.innerHTML='';
+  const bad=lastChecks.bad;
   const cg=el('g',{'data-cam':'1',style:'cursor:grab'},layer);
   el('polygon',{points:`${room.camX},${room.camZ} ${ROOM.minX*0.92},${ROOM.minZ} ${ROOM.maxX*0.92},${ROOM.minZ}`,fill:'#f0dca0','fill-opacity':0.045,stroke:'#5f4a24','stroke-width':1.2,'stroke-dasharray':'10 10'},cg);
+  el('line',{x1:room.camX,y1:room.camZ,x2:room.camX,y2:room.camLookZ,stroke:'#c9a86a','stroke-width':2.5,'stroke-dasharray':'4 8'},cg);
+  el('circle',{cx:room.camX,cy:room.camLookZ,r:7,fill:'none',stroke:'#c9a86a','stroke-width':2},cg);
   el('circle',{cx:room.camX,cy:room.camZ,r:17,fill:'#f0dca0',stroke:sel==='__cam'?'#fff':'#7a5f2a','stroke-width':sel==='__cam'?4:2},cg);
   el('text',{x:room.camX,y:room.camZ+44,fill:'#c9a86a','font-size':22,'text-anchor':'middle'},cg).textContent='CAMERA';
   const ordered=[...items].sort((a,b)=>(ELEV[a.on]||0)-(ELEV[b.on]||0));
   ordered.forEach(it=>{
-    const isSel=sel===it.id;
+    const isSel=sel===it.id, isBad=bad.has(it.id);
     const col = it.hero?'#ff7f6a' : it.spin?'#ffb060' : (MOUNTCOL[it.on]||'#7fdfff');
     const t=tierFor(it);
     const g=el('g',{transform:`translate(${it.x},${it.z}) rotate(${it.rot})`,'data-id':it.id,style:'cursor:grab'},layer);
     const w=it.foot[0],d=it.foot[1];
     if(it.sprite){
       el('image',{href:it.sprite,x:-w/2,y:-d/2,width:w,height:d,opacity:t.op,preserveAspectRatio:'none'},g);
-      if(t.bw>0||isSel) el('rect',{x:-w/2-3,y:-d/2-3,width:w+6,height:d+6,rx:6,fill:'none',
-        stroke:isSel?'#f0dca0':col,'stroke-width':isSel?4:t.bw,'stroke-dasharray':t.dash?'8 6':'none'},g);
+      if(t.bw>0||isSel||isBad) el('rect',{x:-w/2-3,y:-d/2-3,width:w+6,height:d+6,rx:6,fill:'none',
+        stroke:isSel?'#f0dca0':isBad?'#ff5a4a':col,'stroke-width':isSel?4:Math.max(isBad?3:0,t.bw),'stroke-dasharray':t.dash?'8 6':'none'},g);
     } else {
-      el('rect',{x:-w/2,y:-d/2,width:w,height:d,rx:6,fill:col,'fill-opacity':(isSel?0.34:0.15)*t.op,stroke:isSel?'#f0dca0':col,'stroke-width':isSel?4:Math.max(2,t.bw)},g);
+      el('rect',{x:-w/2,y:-d/2,width:w,height:d,rx:6,fill:col,'fill-opacity':(isSel?0.34:0.15)*t.op,stroke:isSel?'#f0dca0':isBad?'#ff5a4a':col,'stroke-width':isSel?4:Math.max(2,t.bw)},g);
     }
     el('line',{x1:0,y1:0,x2:0,y2:-(d/2+22),stroke:isSel?'#f0dca0':col,'stroke-width':3},g);
     el('polygon',{points:`0,${-(d/2+34)} -8,${-(d/2+18)} 8,${-(d/2+18)}`,fill:isSel?'#f0dca0':col},g);
     const lab=el('g',{transform:`rotate(${-it.rot})`},g);
-    el('text',{x:0,y:d/2+22,fill:isSel?'#f0dca0':'#9fc4d8','font-size':17,'text-anchor':'middle','font-weight':'bold','paint-order':'stroke',stroke:'#08131f','stroke-width':4},lab).textContent=it.id;
+    el('text',{x:0,y:d/2+22,fill:isSel?'#f0dca0':isBad?'#ff9a8a':'#9fc4d8','font-size':17,'text-anchor':'middle','font-weight':'bold','paint-order':'stroke',stroke:'#08131f','stroke-width':4},lab).textContent=it.id;
     if(isSel) el('text',{x:0,y:d/2+44,fill:'#cfe8f5','font-size':15,'text-anchor':'middle','paint-order':'stroke',stroke:'#08131f','stroke-width':4},lab).textContent=`${it.x|0}, ${it.z|0} · ${it.rot}° · ${it.on}`;
   });
 }
-function fmt(){
-  const lines=items.map(it=>{
-    const sp = it.sprite && it.sprite.startsWith('data:') ? `models/top/${it.id}.png` : (it.sprite||'');
-    const p=[`id:'${it.id}'`,`model:'${it.model}'`,`on:'${it.on}'`,`x:${it.x|0}`,`z:${it.z|0}`,`rot:${it.rot|0}`,`h:${it.h|0}`,`foot:[${it.foot[0]|0},${it.foot[1]|0}]`];
-    if(sp)p.push(`sprite:'${sp}'`); if(it.spin)p.push('spin:true'); if(it.hero)p.push('hero:true');
-    return '  { '+p.join(', ')+' }';
-  });
-  return `// camera → camX:${room.camX|0}, camZ:${room.camZ|0}\nexport const ITEMS = [\n`+lines.join(',\n')+'\n];';
-}
+const fmt=()=>toLayoutJs(room,items);
 const out=document.getElementById('out');
-function refresh(){ draw(); out.value=fmt(); }
-window.getLayout=()=>items; window.getCam=()=>({camX:room.camX,camZ:room.camZ}); window.layoutCode=fmt;
+const chips=document.getElementById('chips'), checksEl=document.getElementById('checks');
+const statusEl=document.getElementById('status'), statusTxt=document.getElementById('statusTxt');
+const fileCode=toLayoutJs(FILE.ROOM,FILE.ITEMS);
+
+function drawChips(){
+  chips.innerHTML='';
+  const mk=(id,label,img)=>{ const b=document.createElement('button'); b.type='button'; b.dataset.id=id;
+    if(img){ const i=document.createElement('img'); i.src=img; i.alt=''; b.appendChild(i); }
+    b.appendChild(document.createTextNode(label));
+    b.className=(sel===id?'on ':'')+(lastChecks.bad.has(id)?'warn':''); b.onclick=()=>select(id); chips.appendChild(b); };
+  mk('__cam','◉ camera');
+  items.forEach(it=>mk(it.id,it.id,it.sprite));
+}
+function drawChecks(){
+  checksEl.innerHTML='';
+  if(!lastChecks.issues.length){ const li=document.createElement('li'); li.className='ok'; li.textContent='No collisions · everything inside the walls'; checksEl.appendChild(li); return; }
+  lastChecks.issues.forEach(([id,msg])=>{ const li=document.createElement('li'); li.className='w'; li.textContent=msg; li.onclick=()=>select(id); checksEl.appendChild(li); });
+}
+let saveT=0;
+function refresh(){
+  lastChecks=runChecks(); draw(); drawChips(); drawChecks();
+  const code=fmt(); out.value=code;
+  const dirty=code!==fileCode;
+  statusEl.classList.toggle('dirty',dirty);
+  statusTxt.textContent = dirty ? 'draft — differs from models/layout.js (autosaved)' : 'matches models/layout.js';
+  clearTimeout(saveT); saveT=setTimeout(()=>{ if(dirty) writeDraft(room,items); else clearDraft(); },250);
+  undoBtn.disabled=!past.length; redoBtn.disabled=!future.length;
+}
+// stable automation API (used by AI agents / tests): read + write the plan without the UI
+window.getLayout=()=>items; window.getCam=()=>({camX:room.camX,camZ:room.camZ,camY:room.camY,camLookZ:room.camLookZ}); window.layoutCode=fmt;
+window.checks=()=>runChecks().issues.map(i=>i[1]);
+
+// ---- undo / redo (snapshots) ----
+const past=[], future=[];
+const snapshot=()=>JSON.stringify({room,items});
+function commit(){ past.push(snapshot()); if(past.length>200) past.shift(); future.length=0; }
+function restore(s){ const o=JSON.parse(s); room=o.room; items=o.items; if(sel&&sel!=='__cam'&&!items.find(i=>i.id===sel)) sel=null; select(sel); }
+function undo(){ if(!past.length) return; future.push(snapshot()); restore(past.pop()); }
+function redo(){ if(!future.length) return; past.push(snapshot()); restore(future.pop()); }
+const undoBtn=document.getElementById('undo'), redoBtn=document.getElementById('redo');
+undoBtn.onclick=undo; redoBtn.onclick=redo;
 
 // ---- panel ----
-const C={name:document.getElementById('selName'),box:document.getElementById('controls'),itemOnly:document.getElementById('itemOnly'),
-  x:document.getElementById('cx'),z:document.getElementById('cz'),rot:document.getElementById('crot'),
-  rotv:document.getElementById('rotVal'),h:document.getElementById('ch'),on:document.getElementById('con'),spin:document.getElementById('cspin'),
-  dims:document.getElementById('dims'),dl:document.getElementById('dlsprite'),del:document.getElementById('delitem')};
+const $=id=>document.getElementById(id);
+const C={name:$('selName'),box:$('controls'),itemOnly:$('itemOnly'),camOnly:$('camOnly'),
+  x:$('cx'),z:$('cz'),cy:$('ccy'),lz:$('clz'),rot:$('crot'),
+  rotv:$('rotVal'),h:$('ch'),on:$('con'),spin:$('cspin'),
+  dims:$('dims'),dl:$('dlsprite'),del:$('delitem'),dup:$('dupitem')};
+const cur=()=>items.find(o=>o.id===sel);
 function select(id){
   sel=id;
-  if(id==='__cam'){ C.box.style.display='block'; C.itemOnly.style.display='none'; C.name.textContent='◉ CAMERA'; C.x.value=room.camX|0; C.z.value=room.camZ|0; refresh(); return; }
-  const it=items.find(o=>o.id===id);
-  if(!it){ C.box.style.display='none'; C.name.textContent='— nothing selected —'; refresh(); return; }
-  C.box.style.display='block'; C.itemOnly.style.display='block'; C.name.textContent='▸ '+it.id;
-  C.x.value=it.x|0; C.z.value=it.z|0; C.rot.value=it.rot; C.rotv.textContent=it.rot; C.h.value=it.h|0; C.on.value=it.on; C.spin.checked=!!it.spin;
+  if(id==='__cam'){ C.box.style.display='block'; C.itemOnly.style.display='none'; C.camOnly.style.display='block'; C.name.textContent='◉ CAMERA';
+    C.x.value=room.camX|0; C.z.value=room.camZ|0; C.cy.value=room.camY|0; C.lz.value=room.camLookZ|0; refresh(); return; }
+  const it=cur();
+  if(!it){ sel=null; C.box.style.display='none'; C.name.textContent='— nothing selected —'; refresh(); return; }
+  C.box.style.display='block'; C.itemOnly.style.display='block'; C.camOnly.style.display='none'; C.name.textContent='▸ '+it.id;
+  C.x.value=it.x|0; C.z.value=it.z|0; C.rot.value=normRot(it.rot); C.rotv.textContent=it.rot; C.h.value=it.h|0; C.on.value=it.on; C.spin.checked=!!it.spin;
   C.dims.textContent=`footprint ${it.foot[0]|0} × ${it.foot[1]|0} · height ${it.h|0}`;
   C.dl.style.display = it.sprite&&it.sprite.startsWith('data:') ? 'block':'none';
   refresh();
 }
-function setXZ(nx,nz){ if(sel==='__cam'){ room.camX=nx; room.camZ=nz; } else { const it=items.find(o=>o.id===sel); if(it){it.x=nx;it.z=nz;} } refresh(); }
-function updItem(k,v){ const it=items.find(o=>o.id===sel); if(!it)return; it[k]=v;
+const normRot=r=>((((r+180)%360)+360)%360)-180;
+function setXZ(nx,nz){ if(sel==='__cam'){ room.camX=nx; room.camZ=nz; } else { const it=cur(); if(it){it.x=nx;it.z=nz;} } refresh(); }
+function updItem(k,v){ const it=cur(); if(!it)return; it[k]=v;
   if(k==='h'&&it.baseH){ const f=v/it.baseH; it.foot=[Math.round(it.baseFoot[0]*f),Math.round(it.baseFoot[1]*f)];
     C.dims.textContent=`footprint ${it.foot[0]} × ${it.foot[1]} · height ${it.h|0}`; }
+  if(k==='rot'){ C.rotv.textContent=v; C.rot.value=normRot(v); }
   refresh(); }
-C.x.oninput=e=>setXZ(+e.target.value, sel==='__cam'?room.camZ:(items.find(o=>o.id===sel)||{}).z);
-C.z.oninput=e=>setXZ(sel==='__cam'?room.camX:(items.find(o=>o.id===sel)||{}).x, +e.target.value);
-C.h.oninput=e=>updItem('h',+e.target.value); C.on.onchange=e=>updItem('on',e.target.value);
-C.rot.oninput=e=>{ C.rotv.textContent=e.target.value; updItem('rot',+e.target.value); };
-C.spin.onchange=e=>updItem('spin',e.target.checked);
-C.del.onclick=()=>{ const i=items.findIndex(o=>o.id===sel); if(i>=0){ items.splice(i,1); select(null); } };
-C.dl.onclick=()=>{ const it=items.find(o=>o.id===sel); if(!it||!it.sprite.startsWith('data:'))return;
+// number fields: one undo step per focus, not per keystroke
+[C.x,C.z,C.cy,C.lz,C.h,C.rot].forEach(inp=>inp.addEventListener('focus',commit));
+C.rot.addEventListener('pointerdown',commit);
+C.x.oninput=e=>setXZ(+e.target.value, sel==='__cam'?room.camZ:(cur()||{}).z);
+C.z.oninput=e=>setXZ(sel==='__cam'?room.camX:(cur()||{}).x, +e.target.value);
+C.cy.oninput=e=>{ room.camY=+e.target.value; refresh(); };
+C.lz.oninput=e=>{ room.camLookZ=+e.target.value; refresh(); };
+C.h.oninput=e=>{ const v=+e.target.value; if(v>0) updItem('h',v); };
+C.on.onchange=e=>{ commit(); updItem('on',e.target.value); };
+C.rot.oninput=e=>updItem('rot',+e.target.value);
+C.spin.onchange=e=>{ commit(); updItem('spin',e.target.checked); };
+function removeSel(){ const i=items.findIndex(o=>o.id===sel); if(i>=0){ commit(); items.splice(i,1); select(null); } }
+function duplicateSel(){ const it=cur(); if(!it) return; commit();
+  const base=it.id.replace(/\d+$/,''); let n=2, uid=base+n; while(items.find(o=>o.id===uid)) uid=base+(++n);
+  items.push(Object.assign(JSON.parse(JSON.stringify(it)),{id:uid,x:it.x+40,z:it.z+40,hero:false})); select(uid); }
+C.del.onclick=removeSel; C.dup.onclick=duplicateSel;
+C.dl.onclick=()=>{ const it=cur(); if(!it||!it.sprite.startsWith('data:'))return;
   const a=document.createElement('a'); a.href=it.sprite; a.download=it.id+'.png'; a.click(); };
-document.getElementById('copy').onclick=()=>{ navigator.clipboard.writeText(fmt()); const b=document.getElementById('copy'); b.textContent='✓ Copied'; setTimeout(()=>b.textContent='⧉ Copy layout code',1200); };
+
+function flash(btn,txt){ const old=btn.textContent; btn.textContent=txt; setTimeout(()=>btn.textContent=old,1300); }
+$('copy').onclick=async e=>{ const b=e.currentTarget;
+  try{ await navigator.clipboard.writeText(fmt()); flash(b,'✓ Copied'); }
+  catch{ out.focus(); out.select(); flash(b,'Select-all ready — Ctrl+C'); } };
+$('download').onclick=()=>{ const blob=new Blob([fmt()],{type:'text/javascript'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='layout.js'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
+$('revert').onclick=()=>{ if(!confirm('Discard the draft and reload models/layout.js?')) return; commit();
+  room=Object.assign({},FILE.ROOM); items=FILE.ITEMS.map(withBase); clearDraft(); select(null); };
+$('preview').onclick=()=>{ writeDraft(room,items); window.open('scene.html?draft=1&p=100','_blank'); };
+const snapBtn=$('snapbtn');
+function toggleSnap(){ snap=snap===5?1:5; snapBtn.textContent=snap===5?'⌗ Snap 5':'⌗ Snap off'; }
+snapBtn.onclick=toggleSnap;
 
 // ---- drag items + camera ----
 let drag=null;
 function toUser(e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 svg.addEventListener('pointerdown',e=>{
   const cam=e.target.closest('[data-cam]'), g=e.target.closest('[data-id]'), u=toUser(e);
-  if(cam){ select('__cam'); drag={cam:true,dx:room.camX-u.x,dz:room.camZ-u.y}; svg.setPointerCapture(e.pointerId); return; }
+  if(cam){ commit(); select('__cam'); drag={cam:true,dx:room.camX-u.x,dz:room.camZ-u.y}; svg.setPointerCapture(e.pointerId); return; }
   if(!g){ select(null); return; }
-  const id=g.getAttribute('data-id'); select(id); const it=items.find(o=>o.id===id);
-  drag={id,dx:it.x-u.x,dz:it.z-u.y}; svg.setPointerCapture(e.pointerId);
+  const id=g.getAttribute('data-id'); commit(); select(id); const it=cur();
+  drag={id,dx:it.x-u.x,dz:it.z-u.y,moved:false}; svg.setPointerCapture(e.pointerId);
 });
 svg.addEventListener('pointermove',e=>{ if(!drag)return; const u=toUser(e);
-  const nx=Math.round((u.x+drag.dx)/5)*5, nz=Math.round((u.y+drag.dz)/5)*5;
-  if(drag.cam){ room.camX=nx; room.camZ=nz; } else { const it=items.find(o=>o.id===drag.id); it.x=nx; it.z=nz; }
-  C.x.value=nx; C.z.value=nz; refresh();
+  const nx=Math.round((u.x+drag.dx)/snap)*snap, nz=Math.round((u.y+drag.dz)/snap)*snap;
+  if(drag.cam){ room.camX=nx; room.camZ=nz; } else { const it=items.find(o=>o.id===drag.id); if(!it) return; it.x=nx; it.z=nz; }
+  drag.moved=true; C.x.value=nx; C.z.value=nz; refresh();
 });
-svg.addEventListener('pointerup',()=>{ drag=null; });
+const endDrag=()=>{ if(drag&&!drag.moved) past.pop(); drag=null; };   // a click without a move isn't an undo step
+svg.addEventListener('pointerup',endDrag); svg.addEventListener('pointercancel',endDrag);
+
+// ---- keyboard ----
+addEventListener('keydown',e=>{
+  const typing=/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+  const mod=e.ctrlKey||e.metaKey;
+  if(mod&&e.key.toLowerCase()==='z'&&!typing){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
+  if(mod&&e.key.toLowerCase()==='y'&&!typing){ e.preventDefault(); redo(); return; }
+  if(typing||mod) return;
+  const step=e.shiftKey?25:5, arrows={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};
+  if(arrows[e.key]&&sel){ e.preventDefault(); commit(); const [dx,dz]=arrows[e.key];
+    if(sel==='__cam') setXZ(room.camX+dx,room.camZ+dz); else { const it=cur(); if(it) setXZ(it.x+dx,it.z+dz); }
+    C.x.value=sel==='__cam'?room.camX:cur().x; C.z.value=sel==='__cam'?room.camZ:cur().z; return; }
+  const k=e.key.toLowerCase();
+  if((k==='q'||k==='e')&&cur()){ commit(); updItem('rot',normRot(cur().rot+(k==='e'?15:-15))); }
+  else if(k==='d'&&cur()) duplicateSel();
+  else if((e.key==='Delete'||e.key==='Backspace')&&cur()){ e.preventDefault(); removeSel(); }
+  else if(e.key==='Escape') select(null);
+  else if(k==='g') toggleSnap();
+});
 
 // ============ UPLOAD TOOL: drop/pick a .glb → auto top-view sprite + measurements ============
 const VIEW=512;
-let sprRenderer=null, sprCam=null, sprScene=null, sprLight=null;
+let sprRenderer=null, sprCam=null, sprScene=null;
 function spriteRig(){
   if(sprRenderer) return;
   sprRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
@@ -185,7 +366,7 @@ function spriteRig(){
   sprRenderer.outputColorSpace=THREE.SRGBColorSpace;
   sprScene=new THREE.Scene();
   sprScene.add(new THREE.HemisphereLight(0xffffff,0x888888,2.2));
-  sprLight=new THREE.DirectionalLight(0xffffff,1.6); sprLight.position.set(200,500,300); sprScene.add(sprLight);
+  const sun=new THREE.DirectionalLight(0xffffff,1.6); sun.position.set(200,500,300); sprScene.add(sun);
   sprCam=new THREE.OrthographicCamera(-VIEW/2,VIEW/2,VIEW/2,-VIEW/2,0.1,5000);
   sprCam.position.set(0,1000,0); sprCam.up.set(0,0,1); sprCam.lookAt(0,0,0);   // image +y = plan +z
 }
@@ -217,6 +398,7 @@ window.addModelBuffer=function(buf,name,h){
       const id=(name||'model').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,20)||'model';
       let uid=id,n=2; while(items.find(o=>o.id===uid)) uid=id+(n++);
       const fin=new THREE.Box3().setFromObject(obj); const fs=new THREE.Vector3(); fin.getSize(fs);
+      commit();
       const it={id:uid,model:(name||uid)+'.glb',on:'floor',x:0,z:150,rot:0,h:h,
         foot:[w,d],sprite:crop.toDataURL('image/png'),baseH:h,baseFoot:[w,d]};
       items.push(it); select(uid);
@@ -229,12 +411,13 @@ async function addModelFile(file){
     console.log('added',r); }
   catch(e){ alert('Could not read that model: '+e); }
 }
-const stage=document.getElementById('stage');
-document.getElementById('addbtn').onclick=()=>document.getElementById('file').click();
-document.getElementById('file').onchange=e=>{ if(e.target.files[0]) addModelFile(e.target.files[0]); e.target.value=''; };
+const stage=$('stage');
+$('addbtn').onclick=()=>$('file').click();
+$('file').onchange=e=>{ if(e.target.files[0]) addModelFile(e.target.files[0]); e.target.value=''; };
 ['dragenter','dragover'].forEach(ev=>stage.addEventListener(ev,e=>{ e.preventDefault(); stage.classList.add('dropping'); }));
 ['dragleave','drop'].forEach(ev=>stage.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'){ const f=[...e.dataTransfer.files].find(f=>/\.glb$/i.test(f.name)); if(f) addModelFile(f); } stage.classList.remove('dropping'); }));
 
-refresh();
+const want=new URLSearchParams(location.search).get('sel');   // models.html → "Edit in plan"
+if(want&&(want==='__cam'||items.find(o=>o.id===want))) select(want); else refresh();
 </script>
 </body></html>
